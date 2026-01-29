@@ -1,0 +1,636 @@
+<Window x:Class="DongNoti.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:DongNoti.Models"
+        xmlns:local="clr-namespace:DongNoti"
+        Title="DongNoti - 알람 관리" Height="600" Width="800"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Resources/app.ico"
+        Closing="Window_Closing"
+        KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <!-- Null을 Boolean으로 변환하는 컨버터 -->
+        <local:NullToBoolConverter x:Key="NullToBoolConverter"/>
+        
+        <!-- 현대적인 버튼 스타일 -->
+        <Style x:Key="ModernRaisedButton" TargetType="Button">
+            <Setter Property="Background" Value="#2196F3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#40000000" Direction="270" ShadowDepth="2" BlurRadius="4" Opacity="0.3"/>
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1976D2"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1565C0"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#E0E0E0"/>
+                    <Setter Property="Foreground" Value="#9E9E9E"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style x:Key="ModernOutlinedButton" TargetType="Button" BasedOn="{StaticResource ModernRaisedButton}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#2196F3"/>
+            <Setter Property="BorderBrush" Value="#2196F3"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E3F2FD"/>
+                    <Setter Property="BorderBrush" Value="#1976D2"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#BBDEFB"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="#9E9E9E"/>
+                    <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <!-- 현대적인 카드 스타일 -->
+        <Style x:Key="ModernCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#20000000" Direction="270" ShadowDepth="2" BlurRadius="8" Opacity="0.15"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 툴바 -->
+        <Border Grid.Row="0" Margin="12,12,12,8" Style="{StaticResource ModernCard}">
+            <StackPanel>
+                <!-- 상단 버튼 -->
+                <StackPanel x:Name="ToolbarPanel" Orientation="Horizontal" Margin="0,0,0,10">
+                    <Button x:Name="AddAlarmButton" Content="추가" 
+                            Click="AddAlarm_Click" 
+                            Margin="0,0,8,0"
+                            Style="{StaticResource ModernRaisedButton}"/>
+                    <Button x:Name="FocusModeButton" 
+                            Content="🌙 집중 모드" 
+                            Click="FocusMode_Click" 
+                            Margin="0,0,8,0"
+                            Style="{StaticResource ModernRaisedButton}"/>
+                    <Button x:Name="EditButton" 
+                            Content="수정" 
+                            Click="EditAlarm_Click" 
+                            Margin="0,0,8,0"
+                            IsEnabled="False"
+                            Style="{StaticResource ModernOutlinedButton}"/>
+                    <Button x:Name="DeleteButton" 
+                            Content="삭제" 
+                            Click="DeleteAlarm_Click" 
+                            Margin="0,0,8,0"
+                            IsEnabled="False"
+                            Style="{StaticResource ModernOutlinedButton}"/>
+                    <Separator Margin="12,0" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"/>
+                    <Button Content="설정" 
+                            Click="Settings_Click" 
+                            Margin="0,0,8,0"
+                            Style="{StaticResource ModernOutlinedButton}"/>
+                    <Button x:Name="DdayWindowToggleButton" 
+                            Content="Dday 창" 
+                            Click="DdayWindowToggle_Click" 
+                            Margin="0,0,8,0"
+                            Style="{StaticResource ModernOutlinedButton}"/>
+                <Button Content="📊 통계" 
+                        Click="Statistics_Click" 
+                        Margin="0,0,8,0"
+                        Style="{StaticResource ModernOutlinedButton}"/>
+                <Button Content="⌨️ 단축키" 
+                        Click="KeyboardShortcuts_Click" 
+                        Margin="0,0,0,0"
+                        Style="{StaticResource ModernOutlinedButton}"/>
+                </StackPanel>
+                <!-- 검색 및 필터 -->
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="검색:" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,8,0"
+                               FontSize="12"
+                               Foreground="#616161"/>
+                    <Grid Width="200" Margin="0,0,15,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="SearchTextBox" 
+                                 Grid.Column="0"
+                                 TextChanged="SearchTextBox_TextChanged"
+                                 Padding="8,6"
+                                 BorderBrush="#BDBDBD"
+                                 BorderThickness="1"
+                                 FontSize="12"/>
+                        <Button Grid.Column="1"
+                                Content="✕"
+                                Click="ClearSearch_Click"
+                                Width="24"
+                                Height="24"
+                                Padding="0"
+                                Margin="2,0,0,0"
+                                FontSize="10"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Foreground="#757575"
+                                Cursor="Hand"
+                                Visibility="Collapsed"
+                                x:Name="ClearSearchButton">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#E0E0E0"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="필터:" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,8,0"
+                               FontSize="12"
+                               Foreground="#616161"/>
+                    <ComboBox x:Name="FilterComboBox" 
+                              Width="120"
+                              SelectionChanged="FilterComboBox_SelectionChanged"
+                              Padding="8,6"
+                              FontSize="12"
+                              Margin="0,0,15,0">
+                        <ComboBoxItem Content="전체" Tag="All" IsSelected="True"/>
+                        <ComboBoxItem Content="알람만" Tag="AlarmOnly"/>
+                        <ComboBoxItem Content="Dday만" Tag="DdayOnly"/>
+                        <ComboBoxItem Content="활성" Tag="Enabled"/>
+                        <ComboBoxItem Content="비활성" Tag="Disabled"/>
+                        <ComboBoxItem Content="반복 없음" Tag="None"/>
+                        <ComboBoxItem Content="매일" Tag="Daily"/>
+                        <ComboBoxItem Content="매주" Tag="Weekly"/>
+                        <ComboBoxItem Content="매월" Tag="Monthly"/>
+                    </ComboBox>
+                    <TextBlock Text="카테고리:" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,8,0"
+                               FontSize="12"
+                               Foreground="#616161"/>
+                    <ComboBox x:Name="CategoryFilterComboBox" 
+                              Width="120"
+                              SelectionChanged="CategoryFilterComboBox_SelectionChanged"
+                              Padding="8,6"
+                              FontSize="12">
+                        <ComboBoxItem Content="전체" Tag="All" IsSelected="True"/>
+                    </ComboBox>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        
+        <!-- 알람 DataGrid -->
+        <Border Grid.Row="1" Margin="12,0,12,8" Style="{StaticResource ModernCard}">
+            <Grid>
+                <!-- 빈 상태 메시지 -->
+                <StackPanel x:Name="EmptyStatePanel"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed">
+                    <TextBlock Text="📋"
+                               FontSize="64"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,20"
+                               Opacity="0.3"/>
+                    <TextBlock Text="알람이 없습니다"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="#9E9E9E"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"/>
+                    <TextBlock Text="'항목 추가' 버튼을 눌러 시작하세요"
+                               FontSize="14"
+                               Foreground="#BDBDBD"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+                
+                <DataGrid x:Name="AlarmsDataGrid"
+                      AutoGenerateColumns="False" 
+                      CanUserAddRows="False"
+                      SelectionMode="Single"
+                      SelectionChanged="AlarmsDataGrid_SelectionChanged"
+                      MouseDoubleClick="AlarmsDataGrid_MouseDoubleClick"
+                      CellEditEnding="AlarmsDataGrid_CellEditEnding"
+                      PreviewKeyDown="DataGrid_PreviewKeyDown"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="None"
+                      RowHeaderWidth="0"
+                      BorderThickness="0"
+                      Background="Transparent"
+                      AlternatingRowBackground="#F5F5F5"
+                      RowBackground="White"
+                      RowHeight="38">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Setter Property="MinHeight" Value="38"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#E3F2FD"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#BBDEFB"/>
+                        </Trigger>
+                        <!-- 일시적 알람 (5분 후 알람 등) - 회색 이탤릭 -->
+                        <DataTrigger Binding="{Binding IsTemporary}" Value="True">
+                            <Setter Property="Background" Value="#F5F5F5"/>
+                            <Setter Property="Foreground" Value="#9E9E9E"/>
+                            <Setter Property="FontStyle" Value="Italic"/>
+                        </DataTrigger>
+                        <!-- 우선순위별 색상 -->
+                        <DataTrigger Binding="{Binding Priority}" Value="Low">
+                            <Setter Property="Foreground" Value="#9E9E9E"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Priority}" Value="High">
+                            <Setter Property="Foreground" Value="#FF9800"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Priority}" Value="Critical">
+                            <Setter Property="Foreground" Value="#F44336"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                        </DataTrigger>
+                        <!-- 이미 울린 일회성 알람 - 연한 노란색 배경 -->
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding RepeatType}" Value="None"/>
+                                <Condition Binding="{Binding LastTriggered, Converter={StaticResource NullToBoolConverter}}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="Background" Value="#FFFEF5E7"/>
+                            <Setter Property="Foreground" Value="#FF795548"/>
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <!-- 우선순위 배지 -->
+                <DataGridTemplateColumn Header="긴급도" Width="80" IsReadOnly="True"
+                                        SortMemberPath="PrioritySortKey" CanUserSort="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Border x:Name="PriorityBadge"
+                                    CornerRadius="8"
+                                    Padding="6,2"
+                                    Background="#EEEEEE"
+                                    HorizontalAlignment="Left"
+                                    Height="22"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="PriorityLabel"
+                                           Text="보통"
+                                           FontSize="11"
+                                           Foreground="#616161"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Priority}" Value="Low">
+                                    <Setter TargetName="PriorityBadge" Property="Background" Value="#F5F5F5"/>
+                                    <Setter TargetName="PriorityLabel" Property="Text" Value="낮음"/>
+                                    <Setter TargetName="PriorityLabel" Property="Foreground" Value="#9E9E9E"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Priority}" Value="Normal">
+                                    <Setter TargetName="PriorityBadge" Property="Background" Value="#E3F2FD"/>
+                                    <Setter TargetName="PriorityLabel" Property="Text" Value="보통"/>
+                                    <Setter TargetName="PriorityLabel" Property="Foreground" Value="#1976D2"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Priority}" Value="High">
+                                    <Setter TargetName="PriorityBadge" Property="Background" Value="#FFF3E0"/>
+                                    <Setter TargetName="PriorityLabel" Property="Text" Value="높음"/>
+                                    <Setter TargetName="PriorityLabel" Property="Foreground" Value="#FF9800"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Priority}" Value="Critical">
+                                    <Setter TargetName="PriorityBadge" Property="Background" Value="#FFEBEE"/>
+                                    <Setter TargetName="PriorityLabel" Property="Text" Value="긴급"/>
+                                    <Setter TargetName="PriorityLabel" Property="Foreground" Value="#F44336"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- 카테고리 배지 -->
+                <DataGridTemplateColumn Header="카테고리" Width="100" IsReadOnly="True"
+                                        SortMemberPath="CategoryDisplay" CanUserSort="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="8"
+                                    Padding="6,2"
+                                    Background="#F3F5F7"
+                                    HorizontalAlignment="Left"
+                                    Height="22"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CategoryDisplay}"
+                                           FontSize="11"
+                                           Foreground="#546E7A"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTextColumn Header="제목" Binding="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Width="*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="0,0,0,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="날짜" Binding="{Binding DateTime, StringFormat=yyyy-MM-dd}" Width="120">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <!-- 시간 (Alarm 타입일 때만 표시) -->
+                <DataGridTemplateColumn Header="시간" Width="80" IsReadOnly="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DateTime, StringFormat=HH:mm}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn.Visibility>
+                        <Binding Path="AlarmType">
+                            <Binding.Converter>
+                                <local:AlarmTypeToVisibilityConverter TargetType="Alarm"/>
+                            </Binding.Converter>
+                        </Binding>
+                    </DataGridTemplateColumn.Visibility>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="반복" Binding="{Binding RepeatTypeString}" Width="80">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridCheckBoxColumn Header="활성" Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" Width="60">
+                    <DataGridCheckBoxColumn.ElementStyle>
+                        <Style TargetType="CheckBox">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <EventSetter Event="Checked" Handler="AlarmToggle_Checked"/>
+                            <EventSetter Event="Unchecked" Handler="AlarmToggle_Unchecked"/>
+                        </Style>
+                    </DataGridCheckBoxColumn.ElementStyle>
+                </DataGridCheckBoxColumn>
+            </DataGrid.Columns>
+            </DataGrid>
+            </Grid>
+        </Border>
+        
+        <!-- Dday DataGrid -->
+        <Border Grid.Row="2" Margin="12,0,12,8" Style="{StaticResource ModernCard}">
+            <Grid>
+                <!-- 빈 상태 메시지 -->
+                <StackPanel x:Name="DdayEmptyStatePanel"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed">
+                    <TextBlock Text="📅"
+                               FontSize="64"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,20"
+                               Opacity="0.3"/>
+                    <TextBlock Text="Dday가 없습니다"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="#9E9E9E"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"/>
+                    <TextBlock Text="'항목 추가' 버튼에서 Dday를 추가하세요"
+                               FontSize="14"
+                               Foreground="#BDBDBD"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+                
+                <DataGrid x:Name="DdaysDataGrid"
+                      AutoGenerateColumns="False" 
+                      CanUserAddRows="False"
+                      SelectionMode="Single"
+                      SelectionChanged="DdaysDataGrid_SelectionChanged"
+                      MouseDoubleClick="DdaysDataGrid_MouseDoubleClick"
+                      PreviewKeyDown="DataGrid_PreviewKeyDown"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="None"
+                      RowHeaderWidth="0"
+                      BorderThickness="0"
+                      Background="Transparent"
+                      AlternatingRowBackground="#F5F5F5"
+                      RowBackground="White"
+                      RowHeight="38">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Setter Property="MinHeight" Value="38"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#E3F2FD"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#BBDEFB"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <!-- Dday 표시 -->
+                <DataGridTemplateColumn Header="Dday" Width="100" IsReadOnly="True"
+                                        SortMemberPath="DaysRemaining" CanUserSort="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DdayDisplayString}"
+                                       FontSize="16"
+                                       Foreground="#2196F3"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- 목표일 -->
+                <DataGridTextColumn Header="목표일" Binding="{Binding TargetDate, StringFormat=yyyy-MM-dd}" Width="120" IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- 우선순위 배지 -->
+                <DataGridTemplateColumn Header="긴급도" Width="80" IsReadOnly="True"
+                                        SortMemberPath="PrioritySortKey" CanUserSort="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Border x:Name="PriorityBadge"
+                                    CornerRadius="8"
+                                    Padding="6,2"
+                                    Background="#EEEEEE"
+                                    HorizontalAlignment="Left"
+                                    Height="22"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="PriorityLabel"
+                                           Text="보통"
+                                           FontSize="11"
+                                           Foreground="#616161"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Priority}" Value="Low">
+                                    <Setter TargetName="PriorityBadge" Property="Background" Value="#F5F5F5"/>
+                                    <Setter TargetName="PriorityLabel" Property="Text" Value="낮음"/>
+                                    <Setter TargetName="PriorityLabel" Property="Foreground" Value="#9E9E9E"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Priority}" Value="Normal">
+                                    <Setter TargetName="PriorityBadge" Property="Background" Value="#E3F2FD"/>
+                                    <Setter TargetName="PriorityLabel" Property="Text" Value="보통"/>
+                                    <Setter TargetName="PriorityLabel" Property="Foreground" Value="#1976D2"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Priority}" Value="High">
+                                    <Setter TargetName="PriorityBadge" Property="Background" Value="#FFF3E0"/>
+                                    <Setter TargetName="PriorityLabel" Property="Text" Value="높음"/>
+                                    <Setter TargetName="PriorityLabel" Property="Foreground" Value="#FF9800"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Priority}" Value="Critical">
+                                    <Setter TargetName="PriorityBadge" Property="Background" Value="#FFEBEE"/>
+                                    <Setter TargetName="PriorityLabel" Property="Text" Value="긴급"/>
+                                    <Setter TargetName="PriorityLabel" Property="Foreground" Value="#F44336"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- 카테고리 배지 -->
+                <DataGridTemplateColumn Header="카테고리" Width="100" IsReadOnly="True"
+                                        SortMemberPath="CategoryDisplay" CanUserSort="True">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="8"
+                                    Padding="6,2"
+                                    Background="#F3F5F7"
+                                    HorizontalAlignment="Left"
+                                    Height="22"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CategoryDisplay}"
+                                           FontSize="11"
+                                           Foreground="#546E7A"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTextColumn Header="제목" Binding="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Width="*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="0,0,0,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridCheckBoxColumn Header="활성" Binding="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" Width="60">
+                    <DataGridCheckBoxColumn.ElementStyle>
+                        <Style TargetType="CheckBox">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <EventSetter Event="Checked" Handler="DdayToggle_Checked"/>
+                            <EventSetter Event="Unchecked" Handler="DdayToggle_Unchecked"/>
+                        </Style>
+                    </DataGridCheckBoxColumn.ElementStyle>
+                </DataGridCheckBoxColumn>
+            </DataGrid.Columns>
+            </DataGrid>
+            </Grid>
+        </Border>
+        
+        <Border Grid.Row="3" Margin="12,0,12,12" Padding="12,10" Background="#FAFAFA" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="다음 알람:" 
+                           Margin="0,0,8,0" 
+                           FontWeight="SemiBold"
+                           FontSize="13"
+                           Foreground="#424242"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="NextAlarmText" 
+                           Text="없음"
+                           FontSize="13"
+                           Foreground="#2196F3"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text=" | " 
+                           Margin="12,0" 
+                           Foreground="#BDBDBD"
+                           FontSize="13"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="StatusText" 
+                           Text="준비됨"
+                           FontSize="13"
+                           Foreground="#757575"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
+

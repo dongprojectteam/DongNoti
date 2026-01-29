@@ -1,0 +1,374 @@
+<Window x:Class="DongNoti.Views.AlarmDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:DongNoti.Models"
+        Title="알람 설정" Height="650" Width="450"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Resources/app.ico"
+        ResizeMode="NoResize">
+    <Window.Resources>
+        <Style x:Key="ModernRaisedButton" TargetType="Button">
+            <Setter Property="Background" Value="#2196F3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#40000000" Direction="270" ShadowDepth="2" BlurRadius="4" Opacity="0.3"/>
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1976D2"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1565C0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style x:Key="ModernOutlinedButton" TargetType="Button" BasedOn="{StaticResource ModernRaisedButton}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#2196F3"/>
+            <Setter Property="BorderBrush" Value="#2196F3"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E3F2FD"/>
+                    <Setter Property="BorderBrush" Value="#1976D2"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#BBDEFB"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style x:Key="ModernTextButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#2196F3"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E3F2FD"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 슬림한 스크롤바 스타일 -->
+        <Style TargetType="{x:Type ScrollBar}">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="MinWidth" Value="8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
+                        <Grid>
+                            <Border Background="#F5F5F5" CornerRadius="4"/>
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Setter Property="Background" Value="#BDBDBD"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <Border Background="{TemplateBinding Background}" 
+                                                                    CornerRadius="4"
+                                                                    Width="6"
+                                                                    Margin="1,0"/>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#9E9E9E"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter Property="Background" Value="#757575"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    
+    <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Padding="20" Margin="0">
+        <Border.Effect>
+            <DropShadowEffect Color="#20000000" Direction="270" ShadowDepth="2" BlurRadius="8" Opacity="0.15"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <ScrollViewer Grid.Row="0" 
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="0,0,8,0"
+                          CanContentScroll="False">
+                <StackPanel Margin="0,0,8,0">
+                    <!-- 타입 선택 -->
+                    <Label Content="타입:" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="TypeComboBox" 
+                              Margin="0,0,0,15" 
+                              SelectedIndex="0"
+                              SelectionChanged="TypeComboBox_SelectionChanged"
+                              Padding="8,6">
+                        <ComboBoxItem Content="알람" Tag="Alarm"/>
+                        <ComboBoxItem Content="Dday" Tag="Dday"/>
+                    </ComboBox>
+
+                    <!-- 제목 -->
+                    <Label Content="제목:" Margin="0,0,0,5"/>
+                    <TextBox x:Name="TitleTextBox" 
+                             Margin="0,0,0,15" 
+                             Text="알람"
+                             Padding="8,6"
+                             BorderBrush="#BDBDBD"
+                             BorderThickness="1"/>
+
+                    <!-- 날짜 -->
+                    <Label Content="날짜:" Margin="0,0,0,5"/>
+                    <DatePicker x:Name="DatePicker" 
+                                Margin="0,0,0,15"/>
+
+                    <!-- 시간 (Alarm 타입일 때만 표시) -->
+                    <StackPanel x:Name="TimePanel" Margin="0,0,0,5">
+                        <Label Content="시간:" Margin="0,0,0,5"/>
+                        <Grid Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="HourComboBox" 
+                                      Grid.Column="0" 
+                                      Margin="0,0,5,0"
+                                      Padding="8,6"/>
+                            <TextBlock Grid.Column="1" 
+                                       Text=":" 
+                                       VerticalAlignment="Center" 
+                                       HorizontalAlignment="Center" 
+                                       Margin="5,0"
+                                       FontSize="18"
+                                       FontWeight="Bold"/>
+                            <ComboBox x:Name="MinuteComboBox" 
+                                      Grid.Column="2" 
+                                      Margin="5,0,0,0"
+                                      Padding="8,6"/>
+                        </Grid>
+                        
+                        <!-- 빠른 시간 입력 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                            <TextBlock Text="빠른 입력:" 
+                                       VerticalAlignment="Center" 
+                                       Margin="0,0,8,0"
+                                       FontSize="12"
+                                       Foreground="Gray"/>
+                            <TextBox x:Name="QuickTimeTextBox" 
+                                     Width="80"
+                                     Padding="6,4"
+                                     FontSize="12"
+                                     BorderBrush="#BDBDBD"
+                                     BorderThickness="1"
+                                     ToolTip="HH:mm 형식 (예: 15:30)"
+                                     KeyDown="QuickTimeTextBox_KeyDown"/>
+                            <TextBlock Text="(HH:mm)" 
+                                       VerticalAlignment="Center" 
+                                       Margin="5,0,0,0"
+                                       FontSize="11"
+                                       Foreground="LightGray"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 반복 설정 (Alarm 타입일 때만 표시) -->
+                    <StackPanel x:Name="RepeatPanel">
+                        <Label Content="반복:" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="RepeatComboBox" 
+                                  Margin="0,0,0,15" 
+                                  SelectedIndex="0" 
+                                  SelectionChanged="RepeatComboBox_SelectionChanged"
+                                  Padding="8,6">
+                            <ComboBoxItem Content="없음" Tag="None"/>
+                            <ComboBoxItem Content="매일" Tag="Daily"/>
+                            <ComboBoxItem Content="매주" Tag="Weekly"/>
+                            <ComboBoxItem Content="매월" Tag="Monthly"/>
+                        </ComboBox>
+
+                        <!-- 요일 선택 (매주 선택 시 표시) -->
+                        <StackPanel x:Name="DaysOfWeekPanel" Visibility="Collapsed" Margin="0,0,0,15">
+                        <Label Content="요일 선택:" Margin="0,0,0,5"/>
+                        <UniformGrid Columns="7">
+                            <CheckBox x:Name="MondayCheckBox" Content="월" Margin="3" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="TuesdayCheckBox" Content="화" Margin="3" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="WednesdayCheckBox" Content="수" Margin="3" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="ThursdayCheckBox" Content="목" Margin="3" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="FridayCheckBox" Content="금" Margin="3" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="SaturdayCheckBox" Content="토" Margin="3" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="SundayCheckBox" Content="일" Margin="3" HorizontalAlignment="Center"/>
+                        </UniformGrid>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 카테고리 -->
+                    <Label Content="카테고리:" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="CategoryComboBox" 
+                              Margin="0,0,0,15" 
+                              Padding="8,6">
+                        <ComboBoxItem Content="기본" Tag="기본" IsSelected="True"/>
+                    </ComboBox>
+
+                    <!-- 우선순위 -->
+                    <Label Content="우선순위:" Margin="0,0,0,5"/>
+                    <ComboBox x:Name="PriorityComboBox" 
+                              Margin="0,0,0,15" 
+                              Padding="8,6">
+                        <ComboBoxItem Content="낮음" Tag="Low"/>
+                        <ComboBoxItem Content="보통" Tag="Normal" IsSelected="True"/>
+                        <ComboBoxItem Content="높음" Tag="High"/>
+                        <ComboBoxItem Content="긴급" Tag="Critical"/>
+                    </ComboBox>
+
+                    <!-- 사운드 파일 (Alarm 타입일 때만 표시) -->
+                    <StackPanel x:Name="SoundPanel" Margin="0,0,0,15">
+                        <Label Content="사운드 파일 (선택사항):" Margin="0,0,0,5"/>
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="SoundFilePathTextBox" 
+                                     Grid.Column="0" 
+                                     IsReadOnly="True" 
+                                     Margin="0,0,5,0"
+                                     Padding="8,6"
+                                     BorderBrush="#BDBDBD"
+                                     BorderThickness="1"/>
+                            <Button Grid.Column="1" 
+                                    Content="찾기..." 
+                                    Click="BrowseSoundFile_Click" 
+                                    Style="{StaticResource ModernOutlinedButton}"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                            <Button Content="기본 사운드 사용" 
+                                    Click="UseDefaultSound_Click" 
+                                    Margin="0,0,8,0"
+                                    Style="{StaticResource ModernTextButton}"/>
+                            <Button Content="🔊 테스트" 
+                                    Click="TestSound_Click" 
+                                    Style="{StaticResource ModernOutlinedButton}"
+                                    Padding="8,4"
+                                    FontSize="12"
+                                    ToolTip="현재 설정된 사운드를 테스트합니다 (3초 재생)"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 자동 종료 시간 (Alarm 타입일 때만 표시) -->
+                    <StackPanel x:Name="AutoDismissPanel" Margin="0,0,0,15">
+                        <Label Content="자동 종료 시간 (분):" Margin="0,0,0,5"/>
+                        <Grid Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="AutoDismissMinutesTextBox" 
+                                     Text="1" 
+                                     Margin="0,0,5,0"
+                                     PreviewTextInput="AutoDismissMinutesTextBox_PreviewTextInput"
+                                     Padding="8,6"
+                                     BorderBrush="#BDBDBD"
+                                     BorderThickness="1"/>
+                            <TextBlock Grid.Column="1" 
+                                       Text="분 후 자동으로 닫기" 
+                                       VerticalAlignment="Center" 
+                                       Margin="5,0,0,0"
+                                       Foreground="Gray"/>
+                        </Grid>
+                        <TextBlock Text="* 0분 입력 시 자동 종료 안 함 (수동으로만 닫기)" 
+                                   FontSize="10"
+                                   Foreground="Gray"
+                                   Margin="0,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- 메모 (Dday 타입일 때만 표시) -->
+                    <StackPanel x:Name="MemoPanel" Margin="0,0,0,15" Visibility="Collapsed">
+                        <Label Content="메모:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="MemoTextBox" 
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 MinHeight="80"
+                                 MaxHeight="150"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Padding="8,6"
+                                 BorderBrush="#BDBDBD"
+                                 BorderThickness="1"
+                                 FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 버튼 -->
+            <StackPanel Grid.Row="1" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Right" 
+                        Margin="0,20,0,0">
+                <Button Content="확인" 
+                        Click="OK_Click" 
+                        Margin="5,0" 
+                        IsDefault="True"
+                        Style="{StaticResource ModernRaisedButton}"
+                        MinWidth="65" MinHeight="30"/>
+                <Button Content="취소" 
+                        Click="Cancel_Click" 
+                        Margin="5,0" 
+                        IsCancel="True"
+                        Style="{StaticResource ModernOutlinedButton}"
+                        MinWidth="65" MinHeight="30"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

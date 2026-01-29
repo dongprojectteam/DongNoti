@@ -1,0 +1,105 @@
+<Window x:Class="DongNoti.Views.DdayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:DongNoti.Models"
+        Title="Dday" Height="400" Width="300"
+        WindowStartupLocation="Manual"
+        Icon="/Resources/app.ico"
+        Topmost="True"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False"
+        Closing="Window_Closing">
+    <Window.Resources>
+        <Style x:Key="DdayItemStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5F5F5"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 헤더 -->
+        <Border Grid.Row="0" Background="#2196F3" Padding="12,8">
+            <TextBlock Text="Dday" 
+                       FontSize="16" 
+                       FontWeight="Bold" 
+                       Foreground="White"
+                       HorizontalAlignment="Center"/>
+        </Border>
+        
+        <!-- Dday 목록 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ListBox x:Name="DdayListBox" 
+                     SelectionMode="Single"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     SelectionChanged="DdayListBox_SelectionChanged"
+                     PreviewMouseLeftButtonDown="DdayListBox_PreviewMouseLeftButtonDown">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource DdayItemStyle}" HorizontalAlignment="Stretch">
+                            <StackPanel HorizontalAlignment="Stretch">
+                                <TextBlock Text="{Binding Title}" 
+                                           FontSize="14" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#212121"/>
+                                <TextBlock Text="{Binding DdayDisplayString}" 
+                                           FontSize="18" 
+                                           FontWeight="Bold"
+                                           Foreground="#2196F3"
+                                           Margin="0,4,0,0"/>
+                                <TextBlock Text="{Binding TargetDate, StringFormat=yyyy-MM-dd}" 
+                                           FontSize="11" 
+                                           Foreground="#757575"
+                                           Margin="0,2,0,0"/>
+                                <TextBlock x:Name="MemoTextBlock"
+                                           Text="{Binding Memo}" 
+                                           FontSize="12" 
+                                           Foreground="#757575"
+                                           Margin="0,6,0,0"
+                                           TextWrapping="Wrap"
+                                           Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Padding" Value="0"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
+        </ScrollViewer>
+        
+        <!-- 빈 상태 메시지 -->
+        <StackPanel x:Name="EmptyStatePanel"
+                   Grid.Row="1"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Visibility="Collapsed"
+                   IsHitTestVisible="False">
+            <TextBlock Text="📅"
+                       FontSize="48"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,10"
+                       Opacity="0.3"/>
+            <TextBlock Text="Dday가 없습니다"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       Foreground="#9E9E9E"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</Window>

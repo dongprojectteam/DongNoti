@@ -1,0 +1,140 @@
+<Window x:Class="DongNoti.Views.AlarmPopup"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="알람" Height="400" Width="450"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Icon="/Resources/app.ico"
+        Topmost="True"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <Style x:Key="ModernRaisedButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="5" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.9"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    
+    <Border Background="White" 
+            BorderBrush="#2196F3" 
+            BorderThickness="2" 
+            CornerRadius="10"
+            Padding="0">
+        <Border.Effect>
+            <DropShadowEffect Color="#40000000" Direction="270" ShadowDepth="5" BlurRadius="15" Opacity="0.4"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더 (타이틀바) - 드래그 가능 -->
+            <Border Grid.Row="0" 
+                    Background="#2196F3" 
+                    CornerRadius="8,8,0,0"
+                    Padding="15,10"
+                    MouseLeftButtonDown="Header_MouseLeftButtonDown"
+                    Cursor="SizeAll">
+                <TextBlock x:Name="HeaderTextBlock"
+                           Text="알람 (드래그 가능)"
+                           Foreground="White"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- 본문 (알람 이름) -->
+            <Border Grid.Row="1" 
+                    Padding="20"
+                    Background="White">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <TextBlock x:Name="TitleTextBlock"
+                               Text="알람"
+                               FontSize="24"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="#212121"/>
+                </ScrollViewer>
+            </Border>
+
+            <!-- 반복 정보 -->
+            <TextBlock x:Name="RepeatTextBlock"
+                       Grid.Row="2"
+                       Text="반복: 매일"
+                       FontSize="12"
+                       Foreground="#757575"
+                       TextAlignment="Center"
+                       Margin="0,0,0,10"/>
+
+            <!-- 프로그레스 바 및 카운트다운 -->
+            <StackPanel x:Name="CountdownPanel" 
+                        Grid.Row="3" 
+                        Visibility="Visible"
+                        Margin="20,0,20,10">
+                <ProgressBar x:Name="CountdownProgressBar"
+                             Height="8"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="100"
+                             Margin="0,0,0,5"/>
+                <TextBlock x:Name="CountdownTextBlock"
+                           Text="1분 0초 후 자동 종료"
+                           FontSize="11"
+                           Foreground="#757575"
+                           TextAlignment="Center"/>
+            </StackPanel>
+
+            <!-- 버튼 -->
+            <StackPanel Grid.Row="4" 
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Center"
+                        Margin="20,10,20,20">
+                <Button Content="5분 후 다시 알림" 
+                        Click="Snooze_Click"
+                        Width="140"
+                        Height="40"
+                        Margin="5"
+                        Style="{StaticResource ModernRaisedButton}"
+                        Background="#FF9800"/>
+                
+                <Button Content="알람 끄기" 
+                        Click="Dismiss_Click"
+                        Width="140"
+                        Height="40"
+                        Margin="5"
+                        Style="{StaticResource ModernRaisedButton}"
+                        Background="#4CAF50"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

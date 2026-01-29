@@ -1,0 +1,25 @@
+# Build outputs
+bin/
+obj/
+publish*/
+msix_package/
+publish_msix/
+publish_inno/
+
+# Visual Studio / Rider
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Cursor / tooling
+.cursor/
+
+# Artifacts
+DongNoti.msix
+DongNoti_Setup.exe
+*.zip
+*.pfx
+*.cer
+

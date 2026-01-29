@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>DongNoti</AssemblyName>
+    <RootNamespace>DongNoti</RootNamespace>
+    <UseWindowsForms>false</UseWindowsForms>
+    <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+    
+    <!-- MSIX Package Settings -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    
+    <!-- App Information -->
+    <Version>1.0.4.0</Version>
+    <Authors>DongNoti</Authors>
+    <Company>DongNoti</Company>
+    <Product>DongNoti</Product>
+    <Description>Windows 11 Alarm Application</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\app.ico" />
+    <Resource Include="Resources\tray.ico" />
+  </ItemGroup>
+
+</Project>
+
