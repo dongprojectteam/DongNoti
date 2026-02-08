@@ -11,8 +11,23 @@ using DongNoti.Models;
 
 namespace DongNoti.Services
 {
-    public class StorageService
+    public class StorageService : IStorageService
     {
+        /// <summary>
+        /// 싱글톤 인스턴스 (인터페이스 통한 접근용)
+        /// </summary>
+        public static readonly StorageService Instance = new StorageService();
+
+        // IStorageService 인터페이스 구현 (인스턴스 메서드 - static 메서드 래핑)
+        List<Alarm> IStorageService.LoadAlarms() => LoadAlarms();
+        void IStorageService.SaveAlarms(List<Alarm> alarms) => SaveAlarms(alarms);
+        AppSettings IStorageService.LoadSettings() => LoadSettings();
+        void IStorageService.SaveSettings(AppSettings settings) => SaveSettings(settings);
+        string IStorageService.GetDataDirectory() => GetDataDirectory();
+
+        private const int MaxRetries = 5;
+        private const int RetryDelayMs = 100;
+
         private static readonly string DataDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "DongNoti");
@@ -49,55 +64,28 @@ namespace DongNoti.Services
         /// </summary>
         public static List<Alarm> LoadAlarms()
         {
-            const int maxRetries = 5;
-            const int retryDelayMs = 100;
-
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            var result = ExecuteWithRetry(() =>
             {
-                try
+                if (!File.Exists(AlarmsFilePath))
                 {
-                    if (!File.Exists(AlarmsFilePath))
-                    {
-                        LogService.LogDebug("알람 파일이 없음, 빈 리스트 반환");
-                        return new List<Alarm>();
-                    }
-
-                    var json = File.ReadAllText(AlarmsFilePath);
-                    if (string.IsNullOrWhiteSpace(json))
-                    {
-                        LogService.LogDebug("알람 파일이 비어있음, 빈 리스트 반환");
-                        return new List<Alarm>();
-                    }
-
-                    var alarms = JsonSerializer.Deserialize<List<Alarm>>(json, JsonOptions);
-                    var result = alarms ?? new List<Alarm>();
-                    LogService.LogDebug($"알람 로드 완료: {result.Count}개");
-                    return result;
+                    LogService.LogDebug("알람 파일이 없음, 빈 리스트 반환");
+                    return new List<Alarm>();
                 }
-                catch (IOException ex) when (attempt < maxRetries)
+
+                var json = File.ReadAllText(AlarmsFilePath);
+                if (string.IsNullOrWhiteSpace(json))
                 {
-                    // 파일이 다른 프로세스에 의해 사용 중인 경우 재시도
-                    LogService.LogDebug($"알람 파일 로드 재시도 {attempt}/{maxRetries}: {ex.Message}");
-                    Thread.Sleep(retryDelayMs * attempt); // 지수 백오프
+                    LogService.LogDebug("알람 파일이 비어있음, 빈 리스트 반환");
+                    return new List<Alarm>();
                 }
-                catch (Exception ex)
-                {
-                    // IOException이 아니거나 마지막 시도인 경우
-                    if (attempt == maxRetries)
-                    {
-                        LogService.LogError("알람 로드 실패 (모든 재시도 실패)", ex);
-                    }
-                    else
-                    {
-                        LogService.LogDebug($"알람 로드 재시도 {attempt}/{maxRetries}: {ex.Message}");
-                        Thread.Sleep(retryDelayMs * attempt);
-                        continue;
-                    }
-                }
-            }
 
-            // 모든 재시도 실패 시 빈 리스트 반환
-            return new List<Alarm>();
+                var alarms = JsonSerializer.Deserialize<List<Alarm>>(json, JsonOptions);
+                var loaded = alarms ?? new List<Alarm>();
+                LogService.LogDebug($"알람 로드 완료: {loaded.Count}개");
+                return loaded;
+            }, "알람 로드", false);
+
+            return result ?? new List<Alarm>();
         }
 
         /// <summary>
@@ -105,41 +93,14 @@ namespace DongNoti.Services
         /// </summary>
         public static void SaveAlarms(List<Alarm> alarms)
         {
-            const int maxRetries = 5;
-            const int retryDelayMs = 100;
-
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            ExecuteWithRetry(() =>
             {
-                try
-                {
-                    LogService.LogDebug($"알람 저장 시작: {alarms.Count}개");
-                    var json = JsonSerializer.Serialize(alarms, JsonOptions);
-                    File.WriteAllText(AlarmsFilePath, json);
-                    LogService.LogDebug("알람 저장 완료");
-                    return; // 성공 시 즉시 반환
-                }
-                catch (IOException ex) when (attempt < maxRetries)
-                {
-                    // 파일이 다른 프로세스에 의해 사용 중인 경우 재시도
-                    LogService.LogDebug($"알람 파일 저장 재시도 {attempt}/{maxRetries}: {ex.Message}");
-                    Thread.Sleep(retryDelayMs * attempt); // 지수 백오프
-                }
-                catch (Exception ex)
-                {
-                    // IOException이 아니거나 마지막 시도인 경우
-                    if (attempt == maxRetries)
-                    {
-                        LogService.LogError("알람 저장 실패 (모든 재시도 실패)", ex);
-                        throw; // 마지막 시도 실패 시 예외 재발생
-                    }
-                    else
-                    {
-                        LogService.LogDebug($"알람 저장 재시도 {attempt}/{maxRetries}: {ex.Message}");
-                        Thread.Sleep(retryDelayMs * attempt);
-                        continue;
-                    }
-                }
-            }
+                LogService.LogDebug($"알람 저장 시작: {alarms.Count}개");
+                var json = JsonSerializer.Serialize(alarms, JsonOptions);
+                File.WriteAllText(AlarmsFilePath, json);
+                LogService.LogDebug("알람 저장 완료");
+                return true;
+            }, "알람 저장", true);
         }
 
         /// <summary>
@@ -147,44 +108,20 @@ namespace DongNoti.Services
         /// </summary>
         public static AppSettings LoadSettings()
         {
-            const int maxRetries = 5;
-            const int retryDelayMs = 100;
-
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            var result = ExecuteWithRetry(() =>
             {
-                try
-                {
-                    if (!File.Exists(SettingsFilePath))
-                        return new AppSettings();
+                if (!File.Exists(SettingsFilePath))
+                    return new AppSettings();
 
-                    var json = File.ReadAllText(SettingsFilePath);
-                    if (string.IsNullOrWhiteSpace(json))
-                        return new AppSettings();
+                var json = File.ReadAllText(SettingsFilePath);
+                if (string.IsNullOrWhiteSpace(json))
+                    return new AppSettings();
 
-                    var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
-                    return settings ?? new AppSettings();
-                }
-                catch (IOException ex) when (attempt < maxRetries)
-                {
-                    // 파일이 다른 프로세스에 의해 사용 중인 경우 재시도
-                    System.Diagnostics.Debug.WriteLine($"설정 로드 재시도 {attempt}/{maxRetries}: {ex.Message}");
-                    Thread.Sleep(retryDelayMs * attempt); // 지수 백오프
-                }
-                catch (Exception ex)
-                {
-                    if (attempt == maxRetries)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"설정 로드 실패 (모든 재시도 실패): {ex.Message}");
-                    }
-                    else
-                    {
-                        Thread.Sleep(retryDelayMs * attempt);
-                        continue;
-                    }
-                }
-            }
+                var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
+                return settings ?? new AppSettings();
+            }, "설정 로드", false);
 
-            return new AppSettings();
+            return result ?? new AppSettings();
         }
 
         /// <summary>
@@ -192,37 +129,43 @@ namespace DongNoti.Services
         /// </summary>
         public static void SaveSettings(AppSettings settings)
         {
-            const int maxRetries = 5;
-            const int retryDelayMs = 100;
+            ExecuteWithRetry(() =>
+            {
+                var json = JsonSerializer.Serialize(settings, JsonOptions);
+                File.WriteAllText(SettingsFilePath, json);
+                return true;
+            }, "설정 저장", true);
+        }
 
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
+        private static T ExecuteWithRetry<T>(Func<T> action, string operation, bool throwOnFailure)
+        {
+            for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
                 try
                 {
-                    var json = JsonSerializer.Serialize(settings, JsonOptions);
-                    File.WriteAllText(SettingsFilePath, json);
-                    return; // 성공 시 즉시 반환
+                    return action();
                 }
-                catch (IOException ex) when (attempt < maxRetries)
+                catch (IOException ex) when (attempt < MaxRetries)
                 {
-                    // 파일이 다른 프로세스에 의해 사용 중인 경우 재시도
-                    System.Diagnostics.Debug.WriteLine($"설정 저장 재시도 {attempt}/{maxRetries}: {ex.Message}");
-                    Thread.Sleep(retryDelayMs * attempt); // 지수 백오프
+                    LogService.LogDebug($"{operation} 재시도 {attempt}/{MaxRetries}: {ex.Message}");
+                    Thread.Sleep(RetryDelayMs * attempt); // 지수 백오프
                 }
                 catch (Exception ex)
                 {
-                    if (attempt == maxRetries)
+                    if (attempt == MaxRetries)
                     {
-                        System.Diagnostics.Debug.WriteLine($"설정 저장 실패 (모든 재시도 실패): {ex.Message}");
-                        throw; // 마지막 시도 실패 시 예외 재발생
+                        LogService.LogError($"{operation} 실패 (모든 재시도 실패)", ex);
+                        if (throwOnFailure)
+                            throw;
+                        return default!;
                     }
-                    else
-                    {
-                        Thread.Sleep(retryDelayMs * attempt);
-                        continue;
-                    }
+
+                    LogService.LogDebug($"{operation} 재시도 {attempt}/{MaxRetries}: {ex.Message}");
+                    Thread.Sleep(RetryDelayMs * attempt);
                 }
             }
+
+            return default!;
         }
 
         /// <summary>
@@ -251,13 +194,13 @@ namespace DongNoti.Services
 
                 var json = JsonSerializer.Serialize(alarms, JsonOptions);
                 File.WriteAllText(filePath, json);
-                LogService.LogInfo($"알람 내보내기 완료: {alarms.Count}개 → {filePath}");
+                LogService.LogInfo($"내보내기 완료: {alarms.Count}개 → {filePath}");
                 return true;
             }
             catch (Exception ex)
             {
-                LogService.LogError("알람 내보내기 중 오류", ex);
-                MessageBox.Show($"알람 내보내기 중 오류가 발생했습니다:\n{ex.Message}", 
+                LogService.LogError("내보내기 중 오류", ex);
+                MessageBox.Show($"내보내기 중 오류가 발생했습니다:\n{ex.Message}", 
                                "오류", 
                                MessageBoxButton.OK, 
                                MessageBoxImage.Error);
@@ -317,12 +260,12 @@ namespace DongNoti.Services
                     return null;
                 }
 
-                LogService.LogInfo($"알람 가져오기 완료: {alarms.Count}개 ← {filePath}");
+                LogService.LogInfo($" 가져오기 완료: {alarms.Count}개 ← {filePath}");
                 return alarms;
             }
             catch (JsonException ex)
             {
-                LogService.LogError("알람 가져오기 중 JSON 파싱 오류", ex);
+                LogService.LogError(" 가져오기 중 JSON 파싱 오류", ex);
                 MessageBox.Show($"파일 형식이 올바르지 않습니다:\n{ex.Message}", 
                                "오류", 
                                MessageBoxButton.OK, 
@@ -331,8 +274,8 @@ namespace DongNoti.Services
             }
             catch (Exception ex)
             {
-                LogService.LogError("알람 가져오기 중 오류", ex);
-                MessageBox.Show($"알람 가져오기 중 오류가 발생했습니다:\n{ex.Message}", 
+                LogService.LogError(" 가져오기 중 오류", ex);
+                MessageBox.Show($" 가져오기 중 오류가 발생했습니다:\n{ex.Message}", 
                                "오류", 
                                MessageBoxButton.OK, 
                                MessageBoxImage.Error);

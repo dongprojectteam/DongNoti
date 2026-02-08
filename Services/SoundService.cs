@@ -31,21 +31,7 @@ namespace DongNoti.Services
                 {
                     // 기본 시스템 사운드 반복 재생
                     LogService.LogInfo("기본 시스템 사운드 재생 (2초 간격 반복)");
-                    _repeatTimer = new Timer(2000); // 2초마다 재생
-                    _repeatTimer.Elapsed += (s, e) =>
-                    {
-                        try
-                        {
-                            SystemSounds.Asterisk.Play();
-                        }
-                        catch (Exception ex)
-                        {
-                            LogService.LogError("시스템 사운드 재생 중 오류", ex);
-                        }
-                    };
-                    _repeatTimer.AutoReset = true;
-                    _repeatTimer.Enabled = true;
-                    SystemSounds.Asterisk.Play(); // 즉시 한 번 재생
+                    StartSystemSoundLoop(logErrors: true);
                     LogService.LogInfo("기본 시스템 사운드 재생 시작");
                 }
             }
@@ -56,18 +42,7 @@ namespace DongNoti.Services
                 try
                 {
                     LogService.LogInfo("기본 시스템 사운드로 폴백 시도");
-                    _repeatTimer = new Timer(2000);
-                    _repeatTimer.Elapsed += (s, e) =>
-                    {
-                        try
-                        {
-                            SystemSounds.Asterisk.Play();
-                        }
-                        catch { }
-                    };
-                    _repeatTimer.AutoReset = true;
-                    _repeatTimer.Enabled = true;
-                    SystemSounds.Asterisk.Play();
+                    StartSystemSoundLoop(logErrors: false);
                     LogService.LogInfo("기본 시스템 사운드 폴백 재생 시작");
                 }
                 catch (Exception ex2)
@@ -166,6 +141,28 @@ namespace DongNoti.Services
             {
                 LogService.LogError("테스트 사운드 중지 중 오류", ex);
             }
+        }
+
+        private void StartSystemSoundLoop(bool logErrors)
+        {
+            _repeatTimer = new Timer(2000); // 2초마다 재생
+            _repeatTimer.Elapsed += (s, e) =>
+            {
+                try
+                {
+                    SystemSounds.Asterisk.Play();
+                }
+                catch (Exception ex)
+                {
+                    if (logErrors)
+                    {
+                        LogService.LogError("시스템 사운드 재생 중 오류", ex);
+                    }
+                }
+            };
+            _repeatTimer.AutoReset = true;
+            _repeatTimer.Enabled = true;
+            SystemSounds.Asterisk.Play(); // 즉시 한 번 재생
         }
     }
 }

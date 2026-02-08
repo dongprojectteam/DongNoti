@@ -1,5 +1,5 @@
 #define MyAppName "DongNoti"
-#define MyAppVersion "1.0.4.0"
+#define MyAppVersion "1.0.5.2"
 #define MyAppPublisher "DongNoti"
 #define MyAppURL ""
 #define MyAppExeName "DongNoti.exe"

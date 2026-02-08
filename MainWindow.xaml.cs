@@ -3,64 +3,19 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using DongNoti.Models;
 using DongNoti.Services;
 using DongNoti.Views;
 
 namespace DongNoti
 {
-    /// <summary>
-    /// Null을 Boolean으로 변환하는 컨버터 (null이면 false, 아니면 true)
-    /// </summary>
-    public class NullToBoolConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return value != null;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    /// <summary>
-    /// AlarmType에 따라 Visibility를 변환하는 컨버터
-    /// </summary>
-    public class AlarmTypeToVisibilityConverter : IValueConverter
-    {
-        public string TargetType { get; set; } = "Alarm"; // "Alarm" 또는 "Dday"
-
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is AlarmType alarmType)
-            {
-                if (TargetType == "Dday")
-                {
-                    return alarmType == AlarmType.Dday ? Visibility.Visible : Visibility.Collapsed;
-                }
-                else // TargetType == "Alarm"
-                {
-                    return alarmType == AlarmType.Alarm ? Visibility.Visible : Visibility.Collapsed;
-                }
-            }
-            return Visibility.Collapsed;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
     public partial class MainWindow : Window
     {
         private List<Alarm> _alarms = new List<Alarm>();
@@ -94,7 +49,7 @@ namespace DongNoti
             try
             {
                 var settings = StorageService.LoadSettings();
-                var categories = settings.AlarmCategories ?? new List<string> { "기본", "업무", "개인", "약속" };
+                var categories = settings.AlarmCategories ?? AppSettings.GetDefaultAlarmCategories();
 
                 // "기본"이 없으면 추가
                 if (!categories.Contains("기본"))
@@ -157,7 +112,7 @@ namespace DongNoti
                             {
                                 try
                                 {
-                                    // 알람용 CollectionViewSource 설정 (Alarm 타입만)
+                                    // 알람용 CollectionViewSource 설정 (Alarm 타입만, 지난 알람도 표시)
                                     var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
                                     _alarmsViewSource = new CollectionViewSource
                                     {
@@ -167,8 +122,8 @@ namespace DongNoti
                                     
                                     AlarmsDataGrid.ItemsSource = _alarmsViewSource.View;
                                     
-                                    // Dday용 CollectionViewSource 설정 (Dday 타입만, 지난 Dday 제외)
-                                    var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday && !a.IsDdayPassed).ToList();
+                                    // Dday용 CollectionViewSource 설정 (Dday 타입만, 모든 Dday 표시)
+                                    var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
                                     _ddaysViewSource = new CollectionViewSource
                                     {
                                         Source = ddays
@@ -271,9 +226,9 @@ namespace DongNoti
                 if (_alarms == null)
                     return;
 
-                // 빈 상태 표시
+                // 빈 상태 표시 (지난 항목도 포함)
                 var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
-                var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday && !a.IsDdayPassed).ToList();
+                var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
                 
                 if (EmptyStatePanel != null && AlarmsDataGrid != null)
                 {
@@ -313,7 +268,7 @@ namespace DongNoti
                 if (FocusModeService.Instance.IsFocusModeActive)
                 {
                     var remaining = FocusModeService.Instance.GetRemainingTime();
-                    NextAlarmText.Text = $"집중 모드 ({FormatTimeSpan(remaining)} 남음)";
+                    NextAlarmText.Text = $"집중 모드 ({TimeHelper.FormatTimeSpan(remaining)} 남음)";
                     return;
                 }
 
@@ -389,49 +344,31 @@ namespace DongNoti
                     // _alarms 업데이트
                     _alarms = updatedAlarms;
                     
-                    // 알람용 CollectionViewSource 업데이트
+                    // 알람용 CollectionViewSource 새로 생성 (변환기 재호출을 위해, 지난 알람도 표시)
                     var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
                     if (_alarmsViewSource != null)
                     {
-                        // Filter 이벤트 핸들러 제거 후 재설정
                         _alarmsViewSource.Filter -= AlarmsViewSource_Filter;
-                        _alarmsViewSource.Source = alarms;
-                        _alarmsViewSource.Filter += AlarmsViewSource_Filter;
-                        // ItemsSource를 다시 설정하여 UI 강제 업데이트
-                        AlarmsDataGrid.ItemsSource = null;
-                        AlarmsDataGrid.ItemsSource = _alarmsViewSource.View;
                     }
-                    else
-                    {
-                        _alarmsViewSource = new CollectionViewSource
-                        {
-                            Source = alarms
-                        };
-                        _alarmsViewSource.Filter += AlarmsViewSource_Filter;
-                        AlarmsDataGrid.ItemsSource = _alarmsViewSource.View;
-                    }
+                    _alarmsViewSource = new CollectionViewSource { Source = alarms };
+                    _alarmsViewSource.Filter += AlarmsViewSource_Filter;
+                    AlarmsDataGrid.ItemsSource = null;
+                    AlarmsDataGrid.ItemsSource = _alarmsViewSource.View;
+                    // 행 스타일의 변환기 재호출을 위해 Items.Refresh 호출
+                    AlarmsDataGrid.Items.Refresh();
                     
-                    // Dday용 CollectionViewSource 업데이트
-                    var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday && !a.IsDdayPassed).ToList();
+                    // Dday용 CollectionViewSource 새로 생성 (변환기 재호출을 위해, 모든 Dday 표시)
+                    var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
                     if (_ddaysViewSource != null)
                     {
-                        // Filter 이벤트 핸들러 제거 후 재설정
                         _ddaysViewSource.Filter -= DdaysViewSource_Filter;
-                        _ddaysViewSource.Source = ddays;
-                        _ddaysViewSource.Filter += DdaysViewSource_Filter;
-                        // ItemsSource를 다시 설정하여 UI 강제 업데이트
-                        DdaysDataGrid.ItemsSource = null;
-                        DdaysDataGrid.ItemsSource = _ddaysViewSource.View;
                     }
-                    else
-                    {
-                        _ddaysViewSource = new CollectionViewSource
-                        {
-                            Source = ddays
-                        };
-                        _ddaysViewSource.Filter += DdaysViewSource_Filter;
-                        DdaysDataGrid.ItemsSource = _ddaysViewSource.View;
-                    }
+                    _ddaysViewSource = new CollectionViewSource { Source = ddays };
+                    _ddaysViewSource.Filter += DdaysViewSource_Filter;
+                    DdaysDataGrid.ItemsSource = null;
+                    DdaysDataGrid.ItemsSource = _ddaysViewSource.View;
+                    // 행 스타일의 변환기 재호출을 위해 Items.Refresh 호출
+                    DdaysDataGrid.Items.Refresh();
                     
                     ApplyDefaultSort();
                     
@@ -482,6 +419,8 @@ namespace DongNoti
                     e.Accepted = false;
                     return;
                 }
+
+                // 지난 알람은 필터링하지 않음 (표시하되 스타일로 구분)
 
                 // 검색 필터
                 if (SearchTextBox != null)
@@ -590,8 +529,8 @@ namespace DongNoti
                     return;
                 }
 
-                // Dday 타입만 필터링 (이미 Source에서 필터링했지만 안전을 위해)
-                if (dday.AlarmType != AlarmType.Dday || dday.IsDdayPassed)
+                // Dday 타입만 필터링 (이미 Source에서 필터링했지만 안전을 위해, 모든 Dday 표시)
+                if (dday.AlarmType != AlarmType.Dday)
                 {
                     e.Accepted = false;
                     return;
@@ -736,6 +675,74 @@ namespace DongNoti
             catch (Exception ex)
             {
                 LogService.LogError("카테고리 필터 변경 중 오류", ex);
+            }
+        }
+
+        private void Clone_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Alarm? selected = null;
+                if (AlarmsDataGrid.SelectedItem is Alarm alarm)
+                    selected = alarm;
+                else if (DdaysDataGrid?.SelectedItem is Alarm dday)
+                    selected = dday;
+
+                if (selected == null)
+                {
+                    MessageBox.Show("데이터 그리드에서 복제할 알람 또는 Dday를 선택해주세요.",
+                        "선택 없음",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (_alarms == null)
+                    _alarms = new List<Alarm>();
+
+                // 복제용 알람 생성 (새 Id, 나머지는 동일)
+                var clone = new Alarm
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = selected.Title,
+                    DateTime = selected.DateTime,
+                    RepeatType = selected.RepeatType,
+                    IsEnabled = true,
+                    SoundFilePath = selected.SoundFilePath,
+                    LastTriggered = null,
+                    SelectedDaysOfWeek = selected.SelectedDaysOfWeek != null ? new List<DayOfWeek>(selected.SelectedDaysOfWeek) : new List<DayOfWeek>(),
+                    IsTemporary = selected.IsTemporary,
+                    AutoDismissMinutes = selected.AutoDismissMinutes,
+                    Category = selected.Category,
+                    Priority = selected.Priority,
+                    AlarmType = selected.AlarmType,
+                    TargetDate = selected.TargetDate,
+                    Memo = selected.Memo
+                };
+
+                var dialog = new AlarmDialog(clone, forClone: true);
+                if (dialog.ShowDialog() == true && dialog.Alarm != null)
+                {
+                    _alarms.Add(dialog.Alarm);
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                            ddayWindow.RefreshDdayList();
+                    }
+                    var itemType = dialog.Alarm.AlarmType == AlarmType.Dday ? "Dday" : "알람";
+                    LogService.LogInfo($"{itemType} 복제 완료: '{dialog.Alarm.Title}'");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("항목 복제 중 오류", ex);
+                MessageBox.Show($"항목 복제 중 오류가 발생했습니다:\n{ex.Message}",
+                    "오류",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
@@ -892,7 +899,7 @@ namespace DongNoti
                                 var now = DateTime.Now;
                                 var alarmMinute = new DateTime(updatedAlarm.DateTime.Year, updatedAlarm.DateTime.Month, updatedAlarm.DateTime.Day, 
                                                               updatedAlarm.DateTime.Hour, updatedAlarm.DateTime.Minute, 0);
-                                var nowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+                                var nowMinute = TimeHelper.ToMinutePrecision(now);
                                 
                                 // 반복 없는 알람만 처리
                                 if (updatedAlarm.RepeatType == RepeatType.None)
@@ -1106,7 +1113,7 @@ namespace DongNoti
                                 var now = DateTime.Now;
                                 var alarmMinute = new DateTime(editedAlarm.DateTime.Year, editedAlarm.DateTime.Month, editedAlarm.DateTime.Day, 
                                                               editedAlarm.DateTime.Hour, editedAlarm.DateTime.Minute, 0);
-                                var nowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+                                var nowMinute = TimeHelper.ToMinutePrecision(now);
                                 
                                 // 반복 없는 알람만 처리
                                 if (editedAlarm.RepeatType == RepeatType.None)
@@ -1185,6 +1192,10 @@ namespace DongNoti
         {
             var settingsWindow = new SettingsWindow();
             settingsWindow.ShowDialog();
+            if (Application.Current is App app)
+            {
+                app.RefreshAlarms(refreshMainWindow: true);
+            }
         }
 
         private void FocusMode_Click(object sender, RoutedEventArgs e)
@@ -1195,7 +1206,7 @@ namespace DongNoti
                 {
                     // 이미 활성화되어 있으면 종료
                     var result = MessageBox.Show(
-                        $"집중 모드를 종료하시겠습니까?\n\n남은 시간: {FormatTimeSpan(FocusModeService.Instance.GetRemainingTime())}",
+                        $"집중 모드를 종료하시겠습니까?\n\n남은 시간: {TimeHelper.FormatTimeSpan(FocusModeService.Instance.GetRemainingTime())}",
                         "집중 모드",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Question);
@@ -1272,18 +1283,6 @@ namespace DongNoti
             }
         }
 
-        private string FormatTimeSpan(TimeSpan timeSpan)
-        {
-            if (timeSpan.TotalHours >= 1)
-            {
-                return $"{(int)timeSpan.TotalHours}시간 {timeSpan.Minutes}분";
-            }
-            else
-            {
-                return $"{(int)timeSpan.TotalMinutes}분";
-            }
-        }
-
         private void Statistics_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1296,24 +1295,6 @@ namespace DongNoti
             {
                 LogService.LogError("통계 창 열기 중 오류", ex);
                 MessageBox.Show($"통계 창을 열 수 없습니다:\n{ex.Message}", 
-                               "오류", 
-                               MessageBoxButton.OK, 
-                               MessageBoxImage.Error);
-            }
-        }
-
-        private void KeyboardShortcuts_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var shortcutsWindow = new KeyboardShortcutsWindow();
-                shortcutsWindow.Owner = this;
-                shortcutsWindow.ShowDialog();
-            }
-            catch (Exception ex)
-            {
-                LogService.LogError("단축키 창 열기 중 오류", ex);
-                MessageBox.Show($"단축키 창을 열 수 없습니다:\n{ex.Message}", 
                                "오류", 
                                MessageBoxButton.OK, 
                                MessageBoxImage.Error);
@@ -1361,6 +1342,12 @@ namespace DongNoti
                 // Delete: 선택된 알람 또는 Dday 삭제
                 if (e.Key == System.Windows.Input.Key.Delete)
                 {
+                    // 셀 편집 중인지 확인 - 편집 중이면 Delete 키를 셀 내 텍스트 삭제로 전달
+                    if (IsCellEditing(e.OriginalSource as DependencyObject))
+                    {
+                        return; // 편집 중이면 행 삭제 처리하지 않음 (텍스트 삭제로 동작)
+                    }
+
                     // AlarmsDataGrid 또는 DdaysDataGrid 중 하나라도 선택되어 있고 Delete 버튼이 활성화되어 있으면 삭제
                     if ((AlarmsDataGrid.SelectedItem != null || (DdaysDataGrid?.SelectedItem != null)) && DeleteButton.IsEnabled)
                     {
@@ -1374,6 +1361,28 @@ namespace DongNoti
             {
                 LogService.LogError("DataGrid 키 입력 처리 중 오류", ex);
             }
+        }
+
+        /// <summary>
+        /// DataGrid 셀이 편집 중인지 확인합니다.
+        /// </summary>
+        private bool IsCellEditing(DependencyObject? element)
+        {
+            if (element == null)
+                return false;
+
+            // VisualTree를 타고 올라가며 DataGridCell을 찾음
+            DependencyObject? current = element;
+            while (current != null)
+            {
+                if (current is DataGridCell cell)
+                {
+                    return cell.IsEditing;
+                }
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            return false;
         }
 
         private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -1420,6 +1429,625 @@ namespace DongNoti
             catch (Exception ex)
             {
                 LogService.LogError("키보드 단축키 처리 중 오류", ex);
+            }
+        }
+
+        private void OrganizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is Button button && button.ContextMenu != null)
+                {
+                    // 개수 계산
+                    var pastAlarms = _alarms.Where(a => 
+                        a.AlarmType == AlarmType.Alarm && 
+                        a.RepeatType == RepeatType.None && 
+                        a.GetNextAlarmTime() == null).ToList();
+                    
+                    var pastDdays = _alarms.Where(a => 
+                        a.AlarmType == AlarmType.Dday && 
+                        a.IsDdayPassed).ToList();
+                    
+                    var allAlarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
+                    var allDdays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
+                    
+                    var disabledAlarms = allAlarms.Where(a => !a.IsEnabled).ToList();
+                    var disabledDdays = allDdays.Where(a => !a.IsEnabled).ToList();
+                    
+                    var enabledAlarms = allAlarms.Where(a => a.IsEnabled).ToList();
+                    var enabledDdays = allDdays.Where(a => a.IsEnabled).ToList();
+                    
+                    // 메뉴 항목 업데이트
+                    if (button.ContextMenu.Items.Count > 0)
+                    {
+                        // 지난 알람 삭제
+                        if (button.ContextMenu.Items[0] is MenuItem pastDeleteMenu && pastDeleteMenu.Items.Count >= 3)
+                        {
+                            ((MenuItem)pastDeleteMenu.Items[0]).Header = $"알람 삭제 ({pastAlarms.Count}개)";
+                            ((MenuItem)pastDeleteMenu.Items[1]).Header = $"Dday 삭제 ({pastDdays.Count}개)";
+                            ((MenuItem)pastDeleteMenu.Items[2]).Header = $"알람 및 Dday 모두 삭제 ({pastAlarms.Count + pastDdays.Count}개)";
+                        }
+                        
+                        // 모두 삭제 (Separator 다음)
+                        if (button.ContextMenu.Items.Count > 2 && button.ContextMenu.Items[2] is MenuItem deleteAllMenu && deleteAllMenu.Items.Count >= 3)
+                        {
+                            ((MenuItem)deleteAllMenu.Items[0]).Header = $"알람 삭제 ({allAlarms.Count}개)";
+                            ((MenuItem)deleteAllMenu.Items[1]).Header = $"Dday 삭제 ({allDdays.Count}개)";
+                            ((MenuItem)deleteAllMenu.Items[2]).Header = $"알람 및 Dday 모두 삭제 ({allAlarms.Count + allDdays.Count}개)";
+                        }
+                        
+                        // 모두 활성화 (Separator 다음)
+                        if (button.ContextMenu.Items.Count > 4 && button.ContextMenu.Items[4] is MenuItem enableAllMenu && enableAllMenu.Items.Count >= 3)
+                        {
+                            ((MenuItem)enableAllMenu.Items[0]).Header = $"알람 활성화 ({disabledAlarms.Count}개)";
+                            ((MenuItem)enableAllMenu.Items[1]).Header = $"Dday 활성화 ({disabledDdays.Count}개)";
+                            ((MenuItem)enableAllMenu.Items[2]).Header = $"알람 및 Dday 모두 활성화 ({disabledAlarms.Count + disabledDdays.Count}개)";
+                        }
+                        
+                        // 모두 비활성화 (Separator 다음)
+                        if (button.ContextMenu.Items.Count > 6 && button.ContextMenu.Items[6] is MenuItem disableAllMenu && disableAllMenu.Items.Count >= 3)
+                        {
+                            ((MenuItem)disableAllMenu.Items[0]).Header = $"알람 비활성화 ({enabledAlarms.Count}개)";
+                            ((MenuItem)disableAllMenu.Items[1]).Header = $"Dday 비활성화 ({enabledDdays.Count}개)";
+                            ((MenuItem)disableAllMenu.Items[2]).Header = $"알람 및 Dday 모두 비활성화 ({enabledAlarms.Count + enabledDdays.Count}개)";
+                        }
+                    }
+                    
+                    button.ContextMenu.PlacementTarget = button;
+                    button.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                    button.ContextMenu.IsOpen = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("정리 버튼 클릭 처리 중 오류", ex);
+            }
+        }
+
+        private void DeletePastAlarms_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var pastAlarms = _alarms.Where(a => 
+                    a.AlarmType == AlarmType.Alarm && 
+                    a.RepeatType == RepeatType.None && 
+                    a.GetNextAlarmTime() == null).ToList();
+
+                if (pastAlarms.Count == 0)
+                {
+                    MessageBox.Show("삭제할 지난 알람이 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"지난 알람 {pastAlarms.Count}개를 삭제하시겠습니까?",
+                    "지난 알람 삭제",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    foreach (var alarm in pastAlarms)
+                    {
+                        _alarms.Remove(alarm);
+                    }
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    LogService.LogInfo($"지난 알람 {pastAlarms.Count}개 삭제 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("지난 알람 삭제 중 오류", ex);
+                MessageBox.Show($"지난 알람 삭제 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeletePastDdays_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var pastDdays = _alarms.Where(a => 
+                    a.AlarmType == AlarmType.Dday && 
+                    a.IsDdayPassed).ToList();
+
+                if (pastDdays.Count == 0)
+                {
+                    MessageBox.Show("삭제할 지난 Dday가 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"지난 Dday {pastDdays.Count}개를 삭제하시겠습니까?",
+                    "지난 Dday 삭제",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    foreach (var dday in pastDdays)
+                    {
+                        _alarms.Remove(dday);
+                    }
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    
+                    // DdayWindow도 새로고침
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                        {
+                            ddayWindow.RefreshDdayList();
+                        }
+                    }
+                    
+                    LogService.LogInfo($"지난 Dday {pastDdays.Count}개 삭제 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("지난 Dday 삭제 중 오류", ex);
+                MessageBox.Show($"지난 Dday 삭제 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeletePastAlarmsAndDdays_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var pastAlarms = _alarms.Where(a => 
+                    a.AlarmType == AlarmType.Alarm && 
+                    a.RepeatType == RepeatType.None && 
+                    a.GetNextAlarmTime() == null).ToList();
+                
+                var pastDdays = _alarms.Where(a => 
+                    a.AlarmType == AlarmType.Dday && 
+                    a.IsDdayPassed).ToList();
+
+                var totalCount = pastAlarms.Count + pastDdays.Count;
+
+                if (totalCount == 0)
+                {
+                    MessageBox.Show("삭제할 지난 항목이 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"지난 알람 {pastAlarms.Count}개, 지난 Dday {pastDdays.Count}개를 모두 삭제하시겠습니까?",
+                    "지난 항목 삭제",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    foreach (var alarm in pastAlarms)
+                    {
+                        _alarms.Remove(alarm);
+                    }
+                    foreach (var dday in pastDdays)
+                    {
+                        _alarms.Remove(dday);
+                    }
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    
+                    // DdayWindow도 새로고침
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                        {
+                            ddayWindow.RefreshDdayList();
+                        }
+                    }
+                    
+                    LogService.LogInfo($"지난 알람 {pastAlarms.Count}개, 지난 Dday {pastDdays.Count}개 삭제 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("지난 항목 삭제 중 오류", ex);
+                MessageBox.Show($"지난 항목 삭제 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteAlarms_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
+
+                if (alarms.Count == 0)
+                {
+                    MessageBox.Show("삭제할 알람이 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"알람 {alarms.Count}개를 모두 삭제하시겠습니까?",
+                    "알람 삭제",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    foreach (var alarm in alarms)
+                    {
+                        _alarms.Remove(alarm);
+                    }
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    LogService.LogInfo($"알람 {alarms.Count}개 삭제 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("알람 삭제 중 오류", ex);
+                MessageBox.Show($"알람 삭제 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteDdays_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
+
+                if (ddays.Count == 0)
+                {
+                    MessageBox.Show("삭제할 Dday가 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"Dday {ddays.Count}개를 모두 삭제하시겠습니까?",
+                    "Dday 삭제",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    foreach (var dday in ddays)
+                    {
+                        _alarms.Remove(dday);
+                    }
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    
+                    // DdayWindow도 새로고침
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                        {
+                            ddayWindow.RefreshDdayList();
+                        }
+                    }
+                    
+                    LogService.LogInfo($"Dday {ddays.Count}개 삭제 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("Dday 삭제 중 오류", ex);
+                MessageBox.Show($"Dday 삭제 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteAll_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
+                var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
+                var totalCount = alarms.Count + ddays.Count;
+
+                if (totalCount == 0)
+                {
+                    MessageBox.Show("삭제할 항목이 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show(
+                    $"알람 {alarms.Count}개, Dday {ddays.Count}개를 모두 삭제하시겠습니까?",
+                    "모든 항목 삭제",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    _alarms.Clear();
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    
+                    // DdayWindow도 새로고침
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                        {
+                            ddayWindow.RefreshDdayList();
+                        }
+                    }
+                    
+                    LogService.LogInfo($"알람 {alarms.Count}개, Dday {ddays.Count}개 삭제 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("모든 항목 삭제 중 오류", ex);
+                MessageBox.Show($"모든 항목 삭제 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void EnableAlarms_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
+                var count = 0;
+
+                foreach (var alarm in alarms)
+                {
+                    if (!alarm.IsEnabled)
+                    {
+                        alarm.IsEnabled = true;
+                        count++;
+                    }
+                }
+
+                if (count > 0)
+                {
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    LogService.LogInfo($"알람 {count}개 활성화 완료");
+                }
+                else
+                {
+                    MessageBox.Show("활성화할 알람이 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("알람 활성화 중 오류", ex);
+                MessageBox.Show($"알람 활성화 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void EnableDdays_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
+                var count = 0;
+
+                foreach (var dday in ddays)
+                {
+                    if (!dday.IsEnabled)
+                    {
+                        dday.IsEnabled = true;
+                        count++;
+                    }
+                }
+
+                if (count > 0)
+                {
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    
+                    // DdayWindow도 새로고침
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                        {
+                            ddayWindow.RefreshDdayList();
+                        }
+                    }
+                    
+                    LogService.LogInfo($"Dday {count}개 활성화 완료");
+                }
+                else
+                {
+                    MessageBox.Show("활성화할 Dday가 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("Dday 활성화 중 오류", ex);
+                MessageBox.Show($"Dday 활성화 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void EnableAll_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
+                var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
+                var alarmCount = 0;
+                var ddayCount = 0;
+
+                foreach (var alarm in alarms)
+                {
+                    if (!alarm.IsEnabled)
+                    {
+                        alarm.IsEnabled = true;
+                        alarmCount++;
+                    }
+                }
+
+                foreach (var dday in ddays)
+                {
+                    if (!dday.IsEnabled)
+                    {
+                        dday.IsEnabled = true;
+                        ddayCount++;
+                    }
+                }
+
+                if (alarmCount > 0 || ddayCount > 0)
+                {
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    
+                    // DdayWindow도 새로고침
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                        {
+                            ddayWindow.RefreshDdayList();
+                        }
+                    }
+                    
+                    LogService.LogInfo($"알람 {alarmCount}개, Dday {ddayCount}개 활성화 완료");
+                }
+                else
+                {
+                    MessageBox.Show("활성화할 항목이 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("모든 항목 활성화 중 오류", ex);
+                MessageBox.Show($"모든 항목 활성화 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DisableAlarms_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
+                var count = 0;
+
+                foreach (var alarm in alarms)
+                {
+                    if (alarm.IsEnabled)
+                    {
+                        alarm.IsEnabled = false;
+                        count++;
+                    }
+                }
+
+                if (count > 0)
+                {
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    LogService.LogInfo($"알람 {count}개 비활성화 완료");
+                }
+                else
+                {
+                    MessageBox.Show("비활성화할 알람이 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("알람 비활성화 중 오류", ex);
+                MessageBox.Show($"알람 비활성화 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DisableDdays_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
+                var count = 0;
+
+                foreach (var dday in ddays)
+                {
+                    if (dday.IsEnabled)
+                    {
+                        dday.IsEnabled = false;
+                        count++;
+                    }
+                }
+
+                if (count > 0)
+                {
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    
+                    // DdayWindow도 새로고침
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                        {
+                            ddayWindow.RefreshDdayList();
+                        }
+                    }
+                    
+                    LogService.LogInfo($"Dday {count}개 비활성화 완료");
+                }
+                else
+                {
+                    MessageBox.Show("비활성화할 Dday가 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("Dday 비활성화 중 오류", ex);
+                MessageBox.Show($"Dday 비활성화 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DisableAll_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
+                var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
+                var alarmCount = 0;
+                var ddayCount = 0;
+
+                foreach (var alarm in alarms)
+                {
+                    if (alarm.IsEnabled)
+                    {
+                        alarm.IsEnabled = false;
+                        alarmCount++;
+                    }
+                }
+
+                foreach (var dday in ddays)
+                {
+                    if (dday.IsEnabled)
+                    {
+                        dday.IsEnabled = false;
+                        ddayCount++;
+                    }
+                }
+
+                if (alarmCount > 0 || ddayCount > 0)
+                {
+                    SaveAlarms();
+                    RefreshAlarmsList();
+                    
+                    // DdayWindow도 새로고침
+                    if (Application.Current is App app)
+                    {
+                        var ddayWindow = app.GetDdayWindow();
+                        if (ddayWindow != null && ddayWindow.IsVisible)
+                        {
+                            ddayWindow.RefreshDdayList();
+                        }
+                    }
+                    
+                    LogService.LogInfo($"알람 {alarmCount}개, Dday {ddayCount}개 비활성화 완료");
+                }
+                else
+                {
+                    MessageBox.Show("비활성화할 항목이 없습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("모든 항목 비활성화 중 오류", ex);
+                MessageBox.Show($"모든 항목 비활성화 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

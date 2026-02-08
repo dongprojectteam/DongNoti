@@ -1,0 +1,47 @@
+@startuml
+title 집중 모드 시퀀스 (알람 억제 + 놓친 알람 요약)
+
+actor User
+participant "MainWindow/Tray Menu" as UI
+participant "FocusModeService" as Focus
+participant "StorageService" as Store
+participant "AlarmService" as AlarmSvc
+participant "Alarm (Model)" as Alarm
+participant "App.xaml.cs" as App
+participant "MissedAlarmsSummaryWindow" as Summary
+
+User -> UI : 집중 모드 시작(프리셋 선택)
+UI -> Focus : StartFocusMode(minutes)
+Focus -> Store : LoadSettings()
+Focus -> Store : SaveSettings(FocusModeActive=true,\nEndTime=now+minutes,\nCurrentMissedAlarms=[])
+Focus --> UI : FocusModeChanged(true)
+
+loop every 10s
+  AlarmSvc -> AlarmSvc : CheckAlarms()
+  alt Focus.IsFocusModeActive == true
+    AlarmSvc -> Alarm : GetNextAlarmTime()
+    Alarm --> AlarmSvc : nextAlarmTime
+    alt nextAlarmTime == currentMinute\nand LastTriggered < currentMinute
+      AlarmSvc -> Focus : RecordMissedAlarm(alarm)
+      Focus -> Store : LoadSettings/SaveSettings\n(CurrentMissedAlarms += alarm)
+      AlarmSvc -> Store : LoadSettings/SaveSettings\n(AlarmHistory WasMissed=true)
+      AlarmSvc -> Alarm : LastTriggered = currentMinute
+      AlarmSvc -> Store : SaveAlarms(...) (non-temporary)
+    else not due
+      AlarmSvc -> AlarmSvc : skip
+    end
+    AlarmSvc -> AlarmSvc : return (no trigger)
+  end
+end
+
+... 집중 모드 종료 시점 ...
+Focus -> Focus : StopFocusMode()
+Focus -> Store : LoadSettings/SaveSettings\n(FocusModeActive=false,\nEndTime=null,\nCurrentMissedAlarms 유지)
+Focus --> UI : FocusModeChanged(false)
+alt missed alarms exist
+  Focus --> App : FocusModeEnded()
+  App -> Summary : show summary window
+end
+
+@enduml
+

@@ -1,0 +1,45 @@
+@startuml
+title DongNoti - 시스템 개요(컴포넌트)
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+package "DongNoti (WPF App)" {
+  [App.xaml.cs\n- Single Instance (Mutex + NamedPipe)\n- Tray Icon / ContextMenu\n(Alarms/Dday 분리)\n- DdayWindow 관리] as App
+  [MainWindow\n- Alarms DataGrid\n- Ddays DataGrid\n- 단축키 안내\n+ Views/*] as UI
+  [Views/\n- AlarmDialog (Alarm/Dday 설정)\n- DdayWindow (항상 최상단, Timer: 10s)\n- AlarmPopup (알람 팝업)\n- SettingsWindow\n- FocusModeDialog\n- StatisticsWindow\n- MissedAlarmsSummaryWindow\n- KeyboardShortcutsWindow\n- LogWindow\n- InputDialog] as Views
+  [AlarmService\n(Timer: 10s)\n- Alarm/Dday 통합 관리\n- CheckAlarms()\n- AlarmTriggered 이벤트] as AlarmService
+  [FocusModeService\n(Timer: 60s)\n- 집중 모드 상태 관리\n- 놓친 알람 기록] as FocusModeService
+  [NotificationService\n- Toast 알림] as NotificationService
+  [SoundService\n- 알람 사운드 재생] as SoundService
+  [StorageService\n- alarms.json\n- settings.json\n- JSON 직렬화/역직렬화] as StorageService
+  [LogService\n- 파일 로그\n- UI 로그] as LogService
+
+  UI --> AlarmService : Load/Save/Refresh\n(Add/Edit/Delete)
+  UI --> FocusModeService : Start/Stop\nPresets/Status
+  UI --> StorageService : settings/alarms\nload/save
+  UI --> Views : 다이얼로그 열기
+  App --> AlarmService : subscribe AlarmTriggered\n(Alarm만, Dday 제외)
+  App --> NotificationService : show toast
+  App --> SoundService : play sound (popup)
+  App --> Views : DdayWindow Show/Hide\nUpdate Menu
+  Views --> AlarmService : GetAlarms\n(Dday만 필터링)
+  Views --> StorageService : Load/Save\n(AlarmPopup 기록)
+  AlarmService --> StorageService : load/save alarms\n(+ history via settings)
+  AlarmService --> FocusModeService : if active\nrecord missed (Alarm만)
+  AlarmService --> LogService : logging
+  FocusModeService --> StorageService : load/save settings\n(presets/end time/missed)
+  FocusModeService --> LogService : logging
+}
+
+cloud "Windows OS" {
+  [Tray Area] as Tray
+  [File System\n%LOCALAPPDATA%\\DongNoti] as FS
+}
+
+App --> Tray : tray icon/menu
+StorageService --> FS : alarms.json/settings.json
+LogService --> FS : Logs/*.log
+
+@enduml
+

@@ -275,16 +275,16 @@ namespace DongNoti
                 // MainWindow 새로고침은 필요할 때만 (예: 임시 알람 삭제 후)
                 if (refreshMainWindow && _mainWindow != null)
                 {
-                    // 동기적으로 실행하여 즉시 반영
+                    // 동기적으로 실행하여 즉시 반영 (RefreshAlarmsList는 동기적으로 UI 업데이트)
                     _mainWindow.Dispatcher.Invoke(() =>
                     {
                         try
                         {
-                            _mainWindow.LoadAlarms();
+                            _mainWindow.RefreshAlarmsList();
                         }
                         catch (Exception ex)
                         {
-                            LogService.LogError("MainWindow.LoadAlarms 중 오류", ex);
+                            LogService.LogError("MainWindow.RefreshAlarmsList 중 오류", ex);
                         }
                     }, System.Windows.Threading.DispatcherPriority.Normal);
                 }
@@ -371,7 +371,7 @@ namespace DongNoti
             {
                 var settingsWindow = new SettingsWindow();
                 settingsWindow.ShowDialog();
-                RefreshAlarms(); // 설정 변경 후 알람 새로고침
+                RefreshAlarms(refreshMainWindow: true); // 설정 변경 후 알람 새로고침 (카테고리 색상 등 반영)
             };
             _contextMenu.Items.Add(settingsItem);
 
@@ -543,7 +543,7 @@ namespace DongNoti
                             // 집중모드 활성화 상태
                             var statusItem = new MenuItem 
                             { 
-                                Header = $"✅ 활성화 (남은 시간: {FormatTimeSpan(FocusModeService.Instance.GetRemainingTime())})",
+                                Header = $"✅ 활성화 (남은 시간: {TimeHelper.FormatTimeSpan(FocusModeService.Instance.GetRemainingTime())})",
                                 IsEnabled = false
                             };
                             parentMenu.Items.Add(statusItem);
@@ -609,9 +609,9 @@ namespace DongNoti
                     {
                         var alarms = _alarmService?.GetAlarms() ?? new List<Alarm>();
                         
-                        // Dday 타입만 필터링하고 지난 Dday 제외
+                        // Dday 타입만 필터링하고 지난 Dday 및 비활성화된 Dday 제외
                         var ddays = alarms
-                            .Where(a => a.AlarmType == AlarmType.Dday && !a.IsDdayPassed)
+                            .Where(a => a.AlarmType == AlarmType.Dday && !a.IsDdayPassed && a.IsEnabled)
                             .OrderBy(a => a.TargetDate ?? DateTime.MaxValue)
                             .ToList();
                         
@@ -668,7 +668,7 @@ namespace DongNoti
                     if (FocusModeService.Instance.IsFocusModeActive)
                     {
                         var remaining = FocusModeService.Instance.GetRemainingTime();
-                        _taskbarIcon.ToolTipText = $"DongNoti 알람\n🌙 집중 모드 ({FormatTimeSpan(remaining)} 남음)";
+                        _taskbarIcon.ToolTipText = $"DongNoti 알람\n🌙 집중 모드 ({TimeHelper.FormatTimeSpan(remaining)} 남음)";
                     }
                     else
                     {
@@ -679,18 +679,6 @@ namespace DongNoti
             catch (Exception ex)
             {
                 LogService.LogError("트레이 아이콘 툴팁 업데이트 중 오류", ex);
-            }
-        }
-
-        private string FormatTimeSpan(TimeSpan timeSpan)
-        {
-            if (timeSpan.TotalHours >= 1)
-            {
-                return $"{(int)timeSpan.TotalHours}시간 {timeSpan.Minutes}분";
-            }
-            else
-            {
-                return $"{(int)timeSpan.TotalMinutes}분";
             }
         }
 
@@ -740,6 +728,8 @@ namespace DongNoti
             }
             else if (!wasVisible)
             {
+                // 숨겨져 있던 창을 다시 표시할 때 목록 새로고침 (카테고리 색상 등 반영)
+                _ddayWindow.RefreshDdayList();
                 _ddayWindow.Show();
                 _ddayWindow.Activate();
             }

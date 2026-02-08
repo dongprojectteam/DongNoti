@@ -1,0 +1,63 @@
+@startuml
+title 알람 트리거 시퀀스 (정상 모드)
+
+actor User
+participant "MainWindow" as UI
+participant "AlarmService" as AlarmSvc
+participant "StorageService" as Store
+participant "Alarm (Model)" as Alarm
+participant "App.xaml.cs\n(OnAlarmTriggered)" as App
+participant "NotificationService" as Noti
+participant "AlarmPopup" as Popup
+participant "SoundService" as Sound
+
+User -> UI : 항목 추가/수정/활성화
+UI -> Store : SaveAlarms(...)
+Store --> UI : OK
+UI -> AlarmSvc : RefreshAlarms()\n(UI 즉시 반영)
+
+loop every 10s
+  AlarmSvc -> AlarmSvc : CheckAlarms()
+  AlarmSvc -> Alarm : GetNextAlarmTime()
+  Alarm --> AlarmSvc : nextAlarmTime\n(null if Dday type)
+  alt AlarmType == Alarm\nand nextAlarmTime == currentMinute\nand LastTriggered < currentMinute
+    AlarmSvc -> Alarm : LastTriggered = currentMinute
+    AlarmSvc -> Store : SaveAlarms(...) (non-temporary)
+    AlarmSvc -> App : AlarmTriggered(alarm)
+    App -> Noti : ShowAlarmNotification(alarm)
+    App -> Popup : new AlarmPopup(alarm, Sound)
+    Popup -> Sound : Play(...)
+    Popup --> App : Show()
+    
+    alt 사용자 액션
+      User -> Popup : 닫기 버튼
+      Popup -> Popup : RecordSuccessfulAlarm()\n(WasMissed=false)
+      Popup -> Store : LoadSettings/SaveSettings\n(AlarmHistory append)
+      Popup -> Sound : StopSound()
+      Popup --> App : Close()
+    else 사용자 액션
+      User -> Popup : 5분 후 다시 알림
+      Popup -> Popup : RecordSuccessfulAlarm()\n(WasMissed=false)
+      Popup -> Store : LoadSettings/SaveSettings\n(AlarmHistory append)
+      Popup -> AlarmSvc : AddTemporaryAlarm\n(5분 후)
+      Popup -> Sound : StopSound()
+      Popup --> App : Close()
+    else 자동 종료 (AutoDismiss)
+      Popup -> Popup : RecordMissedAlarm()\n(WasMissed=true)
+      Popup -> Store : LoadSettings/SaveSettings\n(AlarmHistory append)
+      Popup -> Sound : StopSound()
+      Popup --> App : Close()
+    end
+    
+    alt alarm.IsTemporary == true
+      AlarmSvc -> AlarmSvc : remove from _alarms (async)
+      AlarmSvc -> Store : SaveAlarms(...)
+      AlarmSvc -> UI : Refresh list (Dispatcher)
+    end
+  else not due
+    AlarmSvc -> AlarmSvc : skip
+  end
+end
+
+@enduml
+
