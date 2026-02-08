@@ -22,7 +22,10 @@ namespace DongNoti.Models
         public List<AlarmHistory> AlarmHistory { get; set; } = new List<AlarmHistory>();
         
         // 알람 카테고리 목록
-        public List<string> AlarmCategories { get; set; } = new List<string> { "기본", "업무", "개인", "약속" };
+        public List<string> AlarmCategories { get; set; } = GetDefaultAlarmCategories();
+
+        // 카테고리별 색상 (D-Day 창·메인 창에서 사용, 키: 카테고리명, 값: hex 색상 예 "#E91E63")
+        public Dictionary<string, string> CategoryColors { get; set; } = new Dictionary<string, string> { ["기념일"] = "#E91E63" };
         
         // Dday 창 표시 상태
         public bool DdayWindowVisible { get; set; } = false;
@@ -41,6 +44,11 @@ namespace DongNoti.Models
                 new FocusModePreset("2h30m", "2시간 30분", 150),
                 new FocusModePreset("3h", "3시간", 180)
             };
+        }
+
+        public static List<string> GetDefaultAlarmCategories()
+        {
+            return new List<string> { "기본", "업무", "개인", "약속", "기념일" };
         }
     }
 }

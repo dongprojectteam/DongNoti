@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- 테스트 프로젝트 제외 -->
+          <Exclude>[*.Tests]*</Exclude>
+          <!-- 속성으로 제외 -->
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+          <!-- 파일 패턴으로 제외: UI 코드 -->
+          <ExcludeByFile>
+            **/Views/**/*.cs,
+            **/App.xaml.cs,
+            **/MainWindow.xaml.cs,
+            **/*.xaml.cs
+          </ExcludeByFile>
+          <!-- 네임스페이스로 제외 -->
+          <Exclude>[DongNoti.Views]*, [DongNoti.App]*, [DongNoti.MainWindow]*</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

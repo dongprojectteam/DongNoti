@@ -1,0 +1,38 @@
+@startuml
+title 집중 모드 상태(State)
+
+[*] --> Idle
+
+state Idle {
+  note right
+    FocusModeActive=false
+    FocusModeEndTime=null
+  end note
+}
+
+Idle --> Active : StartFocusMode(minutes)\n(endTime = now + minutes)
+
+state Active {
+  note right
+    FocusModeActive=true
+    FocusModeEndTime > now
+    놓친 알람은 CurrentMissedAlarms에 누적
+  end note
+}
+
+Active --> Active : Tick(1m)\nremaining time update
+Active --> Ended : StopFocusMode()\nor endTime <= now
+
+state Ended {
+  note right
+    FocusModeActive=false
+    FocusModeEndTime=null
+    CurrentMissedAlarms는 요약창 표시 후 Clear 가능
+  end note
+}
+
+Ended --> Idle : ClearMissedAlarms()\n(선택)
+Ended --> Active : StartFocusMode(...)
+
+@enduml
+

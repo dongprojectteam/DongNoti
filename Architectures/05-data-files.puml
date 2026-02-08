@@ -1,0 +1,51 @@
+@startuml
+title 데이터(파일) 구조 - StorageService 기준
+
+skinparam shadowing false
+
+package "%LOCALAPPDATA%\\DongNoti" {
+  file "alarms.json" as Alarms
+  file "settings.json" as Settings
+  folder "Logs" as Logs
+}
+
+component "StorageService" as Store
+component "LogService" as Log
+component "AlarmService" as AlarmSvc
+component "FocusModeService" as Focus
+
+AlarmSvc --> Store : LoadAlarms/SaveAlarms
+Focus --> Store : LoadSettings/SaveSettings\n(presets/end time/missed)
+AlarmSvc --> Store : AlarmHistory 기록\n(settings.json)
+
+Store --> Alarms : JSON serialize/deserialize
+Store --> Settings : JSON serialize/deserialize
+Log --> Logs : append log files
+
+note right of Alarms
+Alarm 모델 주요 필드:
+- Id, Title, DateTime
+- AlarmType (Alarm/Dday)
+- TargetDate (Dday용)
+- Memo (Dday용)
+- RepeatType, IsEnabled
+- Category, Priority
+- SoundFilePath, AutoDismissMinutes
+- IsTemporary, LastTriggered
+- SelectedDaysOfWeek
+end note
+
+note right of Settings
+주요 키 예:
+- enableLogging
+- showUILog
+- focusModeActive / focusModeEndTime
+- focusModePresets / defaultFocusModePresetId
+- currentMissedAlarms
+- alarmHistory
+- alarmCategories
+- ddayWindowVisible
+end note
+
+@enduml
+

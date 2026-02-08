@@ -11,13 +11,40 @@ using DongNoti.Services;
 
 namespace DongNoti.Views
 {
+    /// <summary>설정창 카테고리 목록용: 이름 + D-Day/메인 창 표시용 색상(hex)</summary>
+    public class CategoryItem
+    {
+        public string Name { get; set; } = "";
+        public string Color { get; set; } = "";
+    }
+
+    public class ColorOption
+    {
+        public string Display { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+
     public partial class SettingsWindow : Window
     {
         private AppSettings _settings = null!;
+        private static readonly List<(string Display, string Value)> CategoryColorOptions = new List<(string, string)>
+        {
+            ("기본(없음)", ""),
+            ("분홍", "#E91E63"),
+            ("파랑", "#2196F3"),
+            ("초록", "#4CAF50"),
+            ("주황", "#FF9800"),
+            ("보라", "#9C27B0"),
+            ("청록", "#009688"),
+            ("갈색", "#795548")
+        };
         private DispatcherTimer? _updateTimer;
+
+        public IList<ColorOption> CategoryColorOptionsList { get; }
 
         public SettingsWindow()
         {
+            CategoryColorOptionsList = CategoryColorOptions.Select(t => new ColorOption { Display = t.Display, Value = t.Value }).ToList();
             InitializeComponent();
             LoadSettings();
             Loaded += SettingsWindow_Loaded;
@@ -54,15 +81,17 @@ namespace DongNoti.Views
         {
             try
             {
-                var categories = _settings.AlarmCategories ?? new List<string> { "기본", "업무", "개인", "약속" };
-                
-                // 기본 카테고리가 없으면 추가
+                var categories = _settings.AlarmCategories ?? AppSettings.GetDefaultAlarmCategories();
                 if (!categories.Contains("기본"))
-                {
                     categories.Insert(0, "기본");
-                }
-                
-                CategoriesItemsControl.ItemsSource = categories;
+
+                var colors = _settings.CategoryColors ?? new Dictionary<string, string>();
+                var items = categories.Select(c => new CategoryItem
+                {
+                    Name = c,
+                    Color = colors.TryGetValue(c, out var hex) ? hex : ""
+                }).ToList();
+                CategoriesItemsControl.ItemsSource = items;
             }
             catch (Exception ex)
             {
@@ -94,8 +123,8 @@ namespace DongNoti.Views
                     return;
                 }
 
-                var categories = _settings.AlarmCategories ?? new List<string> { "기본", "업무", "개인", "약속" };
-                
+                var categories = _settings.AlarmCategories ?? AppSettings.GetDefaultAlarmCategories();
+
                 if (categories.Contains(newCategory))
                 {
                     MessageBox.Show("이미 존재하는 카테고리입니다.", 
@@ -107,6 +136,9 @@ namespace DongNoti.Views
 
                 categories.Add(newCategory);
                 _settings.AlarmCategories = categories;
+                if (_settings.CategoryColors == null)
+                    _settings.CategoryColors = new Dictionary<string, string>();
+                _settings.CategoryColors[newCategory] = "";
                 StorageService.SaveSettings(_settings);
                 
                 LoadCategories();
@@ -136,7 +168,7 @@ namespace DongNoti.Views
             {
                 var result = MessageBox.Show(
                     "카테고리를 기본값으로 초기화하시겠습니까?\n\n" +
-                    "기본 카테고리: 기본, 업무, 개인, 약속\n\n" +
+                    "기본 카테고리: 기본, 업무, 개인, 약속, 기념일\n\n" +
                     "사라지는 카테고리를 사용하는 알람들은 모두 '기본' 카테고리로 변경됩니다.",
                     "카테고리 초기화",
                     MessageBoxButton.YesNo,
@@ -145,10 +177,10 @@ namespace DongNoti.Views
                 if (result == MessageBoxResult.Yes)
                 {
                     // 기본 카테고리 목록
-                    var defaultCategories = new List<string> { "기본", "업무", "개인", "약속" };
+                    var defaultCategories = AppSettings.GetDefaultAlarmCategories();
                     
                     // 현재 카테고리 목록
-                    var currentCategories = _settings.AlarmCategories ?? new List<string> { "기본", "업무", "개인", "약속" };
+                    var currentCategories = _settings.AlarmCategories ?? AppSettings.GetDefaultAlarmCategories();
                     
                     // 사라질 카테고리들 찾기
                     var removedCategories = currentCategories.Where(c => c != "기본" && !defaultCategories.Contains(c)).ToList();
@@ -176,10 +208,11 @@ namespace DongNoti.Views
                         }
                     }
                     
-                    // 카테고리 목록 초기화
+                    // 카테고리 목록 및 색상 초기화
                     _settings.AlarmCategories = defaultCategories;
+                    _settings.CategoryColors = new Dictionary<string, string> { ["기념일"] = "#E91E63" };
                     StorageService.SaveSettings(_settings);
-                    
+
                     LoadCategories();
                     
                     MessageBox.Show("카테고리가 기본값으로 초기화되었습니다.", 
@@ -195,6 +228,24 @@ namespace DongNoti.Views
                                "오류", 
                                MessageBoxButton.OK, 
                                MessageBoxImage.Error);
+            }
+        }
+
+        private void CategoryColor_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (sender is not ComboBox combo || combo.SelectedItem is not ColorOption opt)
+                    return;
+                if (combo.DataContext is not CategoryItem item)
+                    return;
+                item.Color = opt.Value ?? "";
+                _settings.CategoryColors ??= new Dictionary<string, string>();
+                _settings.CategoryColors[item.Name] = item.Color;
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("카테고리 색상 변경 중 오류", ex);
             }
         }
 
@@ -221,9 +272,10 @@ namespace DongNoti.Views
 
                     if (result == MessageBoxResult.Yes)
                     {
-                        var categories = _settings.AlarmCategories ?? new List<string> { "기본", "업무", "개인", "약속" };
+                        var categories = _settings.AlarmCategories ?? AppSettings.GetDefaultAlarmCategories();
                         categories.Remove(category);
                         _settings.AlarmCategories = categories;
+                        _settings.CategoryColors?.Remove(category);
                         StorageService.SaveSettings(_settings);
                         
                         // 해당 카테고리를 사용하는 알람들을 '기본'으로 변경
@@ -416,10 +468,13 @@ namespace DongNoti.Views
             _settings.EnableLogging = EnableLoggingCheckBox.IsChecked ?? true;
             _settings.ShowUILog = ShowUILogCheckBox.IsChecked ?? false;
 
-            // 카테고리 목록 저장
-            if (CategoriesItemsControl.ItemsSource is IEnumerable<string> categories)
+            // 카테고리 목록 및 색상 저장
+            if (CategoriesItemsControl.ItemsSource is IEnumerable<CategoryItem> categoryItems)
             {
-                _settings.AlarmCategories = categories.ToList();
+                _settings.AlarmCategories = categoryItems.Select(c => c.Name).ToList();
+                _settings.CategoryColors ??= new Dictionary<string, string>();
+                foreach (var item in categoryItems)
+                    _settings.CategoryColors[item.Name] = item.Color ?? "";
             }
 
             // 프리셋 목록 저장 (ViewModel에서 실제 모델로 변환)
@@ -472,6 +527,24 @@ namespace DongNoti.Views
             if (Application.Current is App app)
             {
                 app.SetUILogEnabled(false);
+            }
+        }
+
+        private void KeyboardShortcuts_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var shortcutsWindow = new KeyboardShortcutsWindow();
+                shortcutsWindow.Owner = this;
+                shortcutsWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("단축키 창 열기 중 오류", ex);
+                MessageBox.Show($"단축키 창을 열 수 없습니다:\n{ex.Message}",
+                    "오류",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
@@ -684,8 +757,8 @@ namespace DongNoti.Views
             }
             catch (Exception ex)
             {
-                LogService.LogError("알람 내보내기 중 오류", ex);
-                MessageBox.Show($"알람 내보내기 중 오류가 발생했습니다:\n{ex.Message}", 
+                LogService.LogError("내보내기 중 오류", ex);
+                MessageBox.Show($"내보내기 중 오류가 발생했습니다:\n{ex.Message}", 
                                "오류", 
                                MessageBoxButton.OK, 
                                MessageBoxImage.Error);
@@ -696,7 +769,7 @@ namespace DongNoti.Views
         {
             try
             {
-                // 파일에서 알람 가져오기
+                // 파일에서  가져오기
                 var importedAlarms = StorageService.ImportAlarms();
                 
                 if (importedAlarms == null)
@@ -727,7 +800,7 @@ namespace DongNoti.Views
                         "예: 기존 알람과 병합\n" +
                         "아니오: 기존 알람을 모두 교체\n" +
                         "취소: 가져오기 취소",
-                        "알람 가져오기",
+                        " 가져오기",
                         MessageBoxButton.YesNoCancel,
                         MessageBoxImage.Question);
 
@@ -780,8 +853,8 @@ namespace DongNoti.Views
             }
             catch (Exception ex)
             {
-                LogService.LogError("알람 가져오기 중 오류", ex);
-                MessageBox.Show($"알람 가져오기 중 오류가 발생했습니다:\n{ex.Message}", 
+                LogService.LogError(" 가져오기 중 오류", ex);
+                MessageBox.Show($" 가져오기 중 오류가 발생했습니다:\n{ex.Message}", 
                                "오류", 
                                MessageBoxButton.OK, 
                                MessageBoxImage.Error);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
+using DongNoti;
 using DongNoti.Models;
 
 namespace DongNoti.Services
@@ -109,7 +110,7 @@ namespace DongNoti.Services
         private void CheckAlarms(object? sender, ElapsedEventArgs e)
         {
             var now = DateTime.Now;
-            var currentMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+            var currentMinute = TimeHelper.ToMinutePrecision(now);
 
             // 지나간 임시 알람 정리 (활성화 여부와 관계없이)
             CleanupExpiredTemporaryAlarms();
@@ -325,7 +326,7 @@ namespace DongNoti.Services
 
                 // 같은 알람의 최근 히스토리 확인 (같은 분에 트리거된 경우 업데이트)
                 var now = DateTime.Now;
-                var currentMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+                var currentMinute = TimeHelper.ToMinutePrecision(now);
                 
                 // 같은 알람의 같은 분에 기록된 히스토리가 있는지 확인
                 var existingHistory = settings.AlarmHistory

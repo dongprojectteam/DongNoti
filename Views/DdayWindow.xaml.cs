@@ -37,7 +37,18 @@ namespace DongNoti.Views
         private void DdayWindow_Loaded(object sender, RoutedEventArgs e)
         {
             RefreshDdayList();
-            
+
+            // 리소스 ContextMenu의 메뉴에 클릭 핸들러 연결 (스타일 내부에서는 XAML Click 연결 시 크래시 방지)
+            if (Resources["DdayItemContextMenu"] is ContextMenu ctxMenu)
+            {
+                if (ctxMenu.Items.Count > 0 && ctxMenu.Items[0] is MenuItem registerItem)
+                    registerItem.Click += RegisterAsAlarm_Click;
+                if (ctxMenu.Items.Count > 1 && ctxMenu.Items[1] is MenuItem cloneItem)
+                    cloneItem.Click += CloneDday_Click;
+                if (ctxMenu.Items.Count > 2 && ctxMenu.Items[2] is MenuItem deleteItem)
+                    deleteItem.Click += DeleteDday_Click;
+            }
+
             // 타이머 시작
             if (_updateTimer != null)
             {
@@ -69,10 +80,10 @@ namespace DongNoti.Views
 
                 var alarms = _app.AlarmService.GetAlarms();
                 
-                // Dday 타입만 필터링하고 지난 Dday 제외
+                // Dday 타입만 필터링하고 지난 Dday 및 비활성화된 Dday 제외, 남은 일수가 적은 순(당일에 가까운 순)으로 정렬
                 var ddays = alarms
-                    .Where(a => a.AlarmType == AlarmType.Dday && !a.IsDdayPassed)
-                    .OrderBy(a => a.TargetDate ?? DateTime.MaxValue)
+                    .Where(a => a.AlarmType == AlarmType.Dday && !a.IsDdayPassed && a.IsEnabled)
+                    .OrderBy(a => a.DaysRemaining ?? int.MaxValue)
                     .ToList();
 
                 // 현재 선택된 항목 저장 (ID로)
@@ -93,7 +104,9 @@ namespace DongNoti.Views
                     if (DdayListBox == null)
                         return;
 
+                    // ItemsSource 재설정 및 Items.Refresh()로 변환기 재호출 (카테고리 색상 등)
                     DdayListBox.ItemsSource = ddays;
+                    DdayListBox.Items.Refresh();
                     
                     // 빈 상태 표시
                     if (EmptyStatePanel != null && DdayListBox != null)
@@ -353,6 +366,261 @@ namespace DongNoti.Views
                 }
             }
             return null;
+        }
+
+        private void TitleBar_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // 타이틀 바를 드래그하여 창 이동
+            if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
+            {
+                DragMove();
+            }
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 창 닫기 (실제로는 숨기기)
+            Hide();
+            
+            // App에 상태 업데이트 알림
+            if (_app != null)
+            {
+                _app.UpdateDdayWindowMenuItem();
+                
+                // MainWindow 버튼 업데이트
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.Dispatcher.BeginInvoke(() =>
+                    {
+                        mainWindow.UpdateDdayWindowToggleButton();
+                    });
+                }
+            }
+            
+            // 설정 저장
+            if (_app != null)
+            {
+                var settings = StorageService.LoadSettings();
+                if (settings != null)
+                {
+                    settings.DdayWindowVisible = false;
+                    StorageService.SaveSettings(settings);
+                }
+            }
+        }
+
+        private void RegisterAsAlarm_Click(object sender, RoutedEventArgs e)
+        {
+            var menuItem = sender as MenuItem;
+            var contextMenu = menuItem?.Parent as ContextMenu;
+            var listBoxItem = contextMenu?.PlacementTarget as ListBoxItem;
+            var dday = listBoxItem?.DataContext as Alarm;
+
+            if (dday == null)
+                return;
+
+            var newAlarm = new Alarm
+            {
+                Title = dday.Title,
+                AlarmType = AlarmType.Alarm,
+                DateTime = dday.TargetDate.HasValue
+                    ? dday.TargetDate.Value.Date.AddHours(9)
+                    : DateTime.Today.AddHours(9),
+                Category = dday.Category,
+                Priority = dday.Priority
+            };
+
+            var dialog = new AlarmDialog(newAlarm)
+            {
+                Owner = this
+            };
+            if (dialog.ShowDialog() != true || dialog.Alarm == null)
+                return;
+
+            var alarmToAdd = dialog.Alarm;
+            try
+            {
+                var allAlarms = _app?.AlarmService?.GetAlarms() ?? new List<Alarm>();
+                allAlarms.Add(alarmToAdd);
+                StorageService.SaveAlarms(allAlarms);
+                _app?.AlarmService?.RefreshAlarms();
+                // RefreshAlarms(refreshMainWindow: true)는 MainWindow.Dispatcher.Invoke를 호출하므로
+                // 같은 UI 스레드에서 호출하면 데드락이 발생함. BeginInvoke로 비동기 갱신.
+                Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        _app?.RefreshAlarms(refreshMainWindow: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.LogError("알람 목록 갱신 중 오류", ex);
+                    }
+                }, DispatcherPriority.Background);
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("D-Day에서 알람 등록 후 저장 중 오류", ex);
+                MessageBox.Show($"알람 저장 중 오류가 발생했습니다.\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CloneDday_Click(object sender, RoutedEventArgs e)
+        {
+            var contextMenu = (sender as MenuItem)?.Parent as ContextMenu;
+            var listBoxItem = contextMenu?.PlacementTarget as ListBoxItem;
+            var dday = listBoxItem?.DataContext as Alarm;
+
+            if (dday == null)
+                return;
+
+            var clone = new Alarm
+            {
+                Id = Guid.NewGuid().ToString(),
+                Title = dday.Title,
+                DateTime = dday.DateTime,
+                RepeatType = dday.RepeatType,
+                IsEnabled = true,
+                SoundFilePath = dday.SoundFilePath,
+                LastTriggered = null,
+                SelectedDaysOfWeek = dday.SelectedDaysOfWeek != null ? new List<DayOfWeek>(dday.SelectedDaysOfWeek) : new List<DayOfWeek>(),
+                IsTemporary = dday.IsTemporary,
+                AutoDismissMinutes = dday.AutoDismissMinutes,
+                Category = dday.Category,
+                Priority = dday.Priority,
+                AlarmType = AlarmType.Dday,
+                TargetDate = dday.TargetDate,
+                Memo = dday.Memo
+            };
+
+            var dialog = new AlarmDialog(clone, forClone: true)
+            {
+                Owner = this
+            };
+            if (dialog.ShowDialog() != true || dialog.Alarm == null)
+                return;
+
+            try
+            {
+                var allAlarms = _app?.AlarmService?.GetAlarms() ?? new List<Alarm>();
+                allAlarms.Add(dialog.Alarm);
+                StorageService.SaveAlarms(allAlarms);
+                _app?.AlarmService?.RefreshAlarms();
+                RefreshDdayList();
+                Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        _app?.RefreshAlarms(refreshMainWindow: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.LogError("Dday 복제 후 목록 갱신 중 오류", ex);
+                    }
+                }, DispatcherPriority.Background);
+                LogService.LogInfo($"Dday 복제 완료: '{dialog.Alarm.Title}'");
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("Dday 복제 후 저장 중 오류", ex);
+                MessageBox.Show($"Dday 복제 저장 중 오류가 발생했습니다.\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void AddDdayButton_Click(object sender, RoutedEventArgs e)
+        {
+            var newDdayTemplate = new Alarm
+            {
+                AlarmType = AlarmType.Dday,
+                Title = "Dday",
+                TargetDate = DateTime.Today,
+                IsEnabled = true
+            };
+            var dialog = new AlarmDialog(newDdayTemplate, forClone: true)
+            {
+                Owner = this
+            };
+            if (dialog.ShowDialog() != true || dialog.Alarm == null)
+                return;
+
+            if (dialog.Alarm.AlarmType != AlarmType.Dday)
+                return;
+
+            try
+            {
+                var allAlarms = _app?.AlarmService?.GetAlarms() ?? new List<Alarm>();
+                allAlarms.Add(dialog.Alarm);
+                StorageService.SaveAlarms(allAlarms);
+                _app?.AlarmService?.RefreshAlarms();
+                RefreshDdayList();
+                Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        _app?.RefreshAlarms(refreshMainWindow: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.LogError("새 Dday 등록 후 목록 갱신 중 오류", ex);
+                    }
+                }, DispatcherPriority.Background);
+                LogService.LogInfo($"Dday 등록 완료: '{dialog.Alarm.Title}'");
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("새 Dday 등록 후 저장 중 오류", ex);
+                MessageBox.Show($"Dday 등록 저장 중 오류가 발생했습니다.\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteDday_Click(object sender, RoutedEventArgs e)
+        {
+            var contextMenu = (sender as MenuItem)?.Parent as ContextMenu;
+            var listBoxItem = contextMenu?.PlacementTarget as ListBoxItem;
+            var dday = listBoxItem?.DataContext as Alarm;
+
+            if (dday == null)
+                return;
+
+            var result = MessageBox.Show(
+                $"'{dday.Title}' Dday을(를) 삭제하시겠습니까?",
+                "Dday 삭제",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                var allAlarms = _app?.AlarmService?.GetAlarms() ?? new List<Alarm>();
+                var removed = allAlarms.RemoveAll(a => a.Id == dday.Id);
+                if (removed == 0)
+                    return;
+
+                StorageService.SaveAlarms(allAlarms);
+                _app?.AlarmService?.RefreshAlarms();
+                RefreshDdayList();
+
+                Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        _app?.RefreshAlarms(refreshMainWindow: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.LogError("D-Day 삭제 후 목록 갱신 중 오류", ex);
+                    }
+                }, DispatcherPriority.Background);
+
+                LogService.LogInfo($"Dday 삭제 완료: '{dday.Title}'");
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("D-Day 삭제 중 오류", ex);
+                MessageBox.Show($"삭제 중 오류가 발생했습니다.\n{ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

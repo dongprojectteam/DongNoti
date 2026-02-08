@@ -17,7 +17,7 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     
     <!-- App Information -->
-    <Version>1.0.4.0</Version>
+    <Version>1.0.5.2</Version>
     <Authors>DongNoti</Authors>
     <Company>DongNoti</Company>
     <Product>DongNoti</Product>
@@ -32,6 +32,14 @@
   <ItemGroup>
     <Resource Include="Resources\app.ico" />
     <Resource Include="Resources\tray.ico" />
+  </ItemGroup>
+
+  <!-- Exclude test project from compilation -->
+  <ItemGroup>
+    <Compile Remove="DongNoti.Tests\**" />
+    <Content Remove="DongNoti.Tests\**" />
+    <EmbeddedResource Remove="DongNoti.Tests\**" />
+    <None Remove="DongNoti.Tests\**" />
   </ItemGroup>
 
 </Project>

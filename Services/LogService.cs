@@ -6,8 +6,19 @@ using System.Timers;
 
 namespace DongNoti.Services
 {
-    public class LogService
+    public class LogService : ILogService
     {
+        /// <summary>
+        /// 싱글톤 인스턴스 (인터페이스 통한 접근용)
+        /// </summary>
+        public static readonly LogService Instance = new LogService();
+
+        // ILogService 인터페이스 구현 (인스턴스 메서드 - static 메서드 래핑)
+        void ILogService.LogInfo(string message) => LogInfo(message);
+        void ILogService.LogWarning(string message) => LogWarning(message);
+        void ILogService.LogDebug(string message) => LogDebug(message);
+        void ILogService.LogError(string message, Exception? ex) => LogError(message, ex);
+
         private static readonly string LogDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "DongNoti", "Logs");

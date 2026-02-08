@@ -297,23 +297,34 @@
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="120"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding}" 
+                                            <TextBlock Text="{Binding Name}"
                                                        FontSize="13"
                                                        VerticalAlignment="Center"/>
-                                            <Button Grid.Column="1"
+                                            <ComboBox Grid.Column="1"
+                                                      ItemsSource="{Binding CategoryColorOptionsList, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      DisplayMemberPath="Display"
+                                                      SelectedValuePath="Value"
+                                                      SelectedValue="{Binding Color, Mode=TwoWay}"
+                                                      SelectionChanged="CategoryColor_SelectionChanged"
+                                                      Margin="0,0,8,0"
+                                                      VerticalAlignment="Center"
+                                                      FontSize="12"
+                                                      Padding="6,4"/>
+                                            <Button Grid.Column="2"
                                                     Content="삭제"
                                                     Click="DeleteCategory_Click"
                                                     Padding="8,4"
                                                     FontSize="11"
                                                     MinWidth="50"
-                                                    Tag="{Binding}">
+                                                    Tag="{Binding Name}">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource ModernOutlinedButton}">
                                                         <Setter Property="Visibility" Value="Visible"/>
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding}" Value="기본">
+                                                            <DataTrigger Binding="{Binding Name}" Value="기본">
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
@@ -329,23 +340,23 @@
                     </StackPanel>
                     </GroupBox>
 
-                    <!-- 알람 백업/복원 -->
-                    <GroupBox Header="알람 백업/복원" Padding="10" Margin="0,0,0,15">
+                    <!-- 알람 및 DDay 백업/복원 -->
+                    <GroupBox Header="알람 및 DDay 백업/복원" Padding="10" Margin="0,0,0,15">
                 <StackPanel>
-                    <TextBlock Text="알람 데이터를 파일로 내보내거나 가져올 수 있습니다" 
+                    <TextBlock Text="알람 및 DDay 데이터를 파일로 내보내거나 가져올 수 있습니다" 
                                FontSize="11" 
                                Foreground="#757575"
                                Margin="0,0,0,10"
                                TextWrapping="Wrap"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <Button Content="알람 내보내기" 
+                        <Button Content="내보내기" 
                                 Click="ExportAlarms_Click" 
                                 Style="{StaticResource ModernOutlinedButton}"
                                 Padding="12,6"
                                 FontSize="12"
                                 MinWidth="120"
                                 Margin="0,0,8,0"/>
-                        <Button Content="알람 가져오기" 
+                        <Button Content=" 가져오기" 
                                 Click="ImportAlarms_Click" 
                                 Style="{StaticResource ModernOutlinedButton}"
                                 Padding="12,6"
@@ -360,7 +371,7 @@
             <!-- 버전 정보 -->
             <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,20,0,0">
                 <TextBlock x:Name="VersionTextBlock"
-                           Text="DongNoti v1.0.4.0" 
+                           Text="DongNoti v1.0.5.2" 
                            FontSize="13" 
                            FontWeight="SemiBold"
                            Foreground="#616161"
@@ -382,6 +393,11 @@
                         Orientation="Horizontal" 
                         HorizontalAlignment="Right" 
                         Margin="0,20,0,0">
+                <Button Content="⌨️ 단축키" 
+                        Click="KeyboardShortcuts_Click" 
+                        Margin="0,0,15,0"
+                        Style="{StaticResource ModernOutlinedButton}"
+                        MinWidth="80" MinHeight="30"/>
                 <Button Content="확인" 
                         Click="OK_Click" 
                         Margin="5,0" 

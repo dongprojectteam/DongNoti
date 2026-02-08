@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DongNoti;
 using System.Linq;
 using System.Text.Json.Serialization;
 
@@ -122,7 +123,7 @@ namespace DongNoti.Models
                 // 반복 없음: 원래 시간이 현재 시간과 같거나 미래이면 반환
                 var alarmMinute = new DateTime(alarmTime.Year, alarmTime.Month, alarmTime.Day, 
                                              alarmTime.Hour, alarmTime.Minute, 0);
-                var nowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+                var nowMinute = TimeHelper.ToMinutePrecision(now);
                 
                 // 같은 분이거나 미래이면 반환
                 // 단, LastTriggered가 설정되어 있으면 이미 울린 알람이므로 null 반환
@@ -142,7 +143,7 @@ namespace DongNoti.Models
             {
                 case RepeatType.Daily:
                     // 오늘의 알람 시간으로 설정 (분 단위로 비교)
-                    var nowMinuteDaily = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+                    var nowMinuteDaily = TimeHelper.ToMinutePrecision(now);
                     var todayAlarm = new DateTime(now.Year, now.Month, now.Day, 
                                                  alarmTime.Hour, alarmTime.Minute, 0);
                     
@@ -160,7 +161,7 @@ namespace DongNoti.Models
                         : new List<DayOfWeek> { alarmTime.DayOfWeek };
                     
                     // 오늘부터 7일 내에서 다음 알람 요일 찾기 (분 단위로 비교)
-                    var nowMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+                    var nowMinute = TimeHelper.ToMinutePrecision(now);
                     var nextWeeklyAlarm = new DateTime(now.Year, now.Month, now.Day, 
                                                        alarmTime.Hour, alarmTime.Minute, 0);
                     
@@ -182,7 +183,7 @@ namespace DongNoti.Models
                     return nextWeeklyAlarm.AddDays(7);
 
                 case RepeatType.Monthly:
-                    var nowMinuteMonthly = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+                    var nowMinuteMonthly = TimeHelper.ToMinutePrecision(now);
                     
                     // 매월 알람 날짜로 설정 (원래 알람의 날짜 사용, 날짜 오버플로우 방지)
                     var targetDay = Math.Min(alarmTime.Day, DateTime.DaysInMonth(now.Year, now.Month));

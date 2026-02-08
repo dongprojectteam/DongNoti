@@ -14,7 +14,9 @@ namespace DongNoti.Views
         public Alarm? Alarm { get; private set; }
         private Alarm? _existingAlarm;
 
-        public AlarmDialog(Alarm? existingAlarm = null)
+        /// <param name="existingAlarm">편집할 알람 또는 복제 시 내용을 채울 알람</param>
+        /// <param name="forClone">true면 복제 모드: 폼만 채우고 저장 시 새 ID로 추가</param>
+        public AlarmDialog(Alarm? existingAlarm = null, bool forClone = false)
         {
             InitializeComponent();
             
@@ -25,7 +27,7 @@ namespace DongNoti.Views
             // 타입에 따라 UI 업데이트
             UpdateUIForType();
 
-            _existingAlarm = existingAlarm;
+            _existingAlarm = forClone ? null : existingAlarm;
             
             if (existingAlarm != null)
             {
@@ -210,7 +212,7 @@ namespace DongNoti.Views
             try
             {
                 var settings = StorageService.LoadSettings();
-                var categories = settings.AlarmCategories ?? new List<string> { "기본", "업무", "개인", "약속" };
+                var categories = settings.AlarmCategories ?? AppSettings.GetDefaultAlarmCategories();
 
                 CategoryComboBox.Items.Clear();
                 
@@ -565,6 +567,46 @@ namespace DongNoti.Views
                 alarm.Id = _existingAlarm.Id;
             }
 
+            // 중복 검사 (새 항목 추가 시에만, 편집 모드는 제외)
+            if (_existingAlarm == null)
+            {
+                var existingAlarms = StorageService.LoadAlarms();
+                Alarm? duplicate = null;
+
+                if (alarmType == AlarmType.Alarm)
+                {
+                    // 알람: 제목 + 날짜 + 시간으로 비교
+                    duplicate = existingAlarms.FirstOrDefault(a =>
+                        a.AlarmType == AlarmType.Alarm &&
+                        a.Title.Equals(alarm.Title, StringComparison.OrdinalIgnoreCase) &&
+                        a.DateTime.Date == alarm.DateTime.Date &&
+                        a.DateTime.Hour == alarm.DateTime.Hour &&
+                        a.DateTime.Minute == alarm.DateTime.Minute);
+                }
+                else
+                {
+                    // D-Day: 제목 + 목표 날짜로 비교
+                    duplicate = existingAlarms.FirstOrDefault(a =>
+                        a.AlarmType == AlarmType.Dday &&
+                        a.Title.Equals(alarm.Title, StringComparison.OrdinalIgnoreCase) &&
+                        a.TargetDate?.Date == alarm.TargetDate?.Date);
+                }
+
+                if (duplicate != null)
+                {
+                    var typeStr = alarmType == AlarmType.Alarm ? "알람" : "D-Day";
+                    var dateStr = alarmType == AlarmType.Alarm
+                        ? duplicate.DateTime.ToString("yyyy-MM-dd HH:mm")
+                        : duplicate.TargetDate?.ToString("yyyy-MM-dd") ?? "";
+                    MessageBox.Show(
+                        $"동일한 {typeStr}이(가) 이미 존재합니다.\n\n제목: {duplicate.Title}\n날짜: {dateStr}",
+                        $"중복 {typeStr}",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+            }
+
             Alarm = alarm;
             DialogResult = true;
             Close();
@@ -574,6 +616,40 @@ namespace DongNoti.Views
         {
             DialogResult = false;
             Close();
+        }
+
+        private void DateDecrease_Click(object sender, RoutedEventArgs e)
+        {
+            if (DatePicker.SelectedDate.HasValue)
+            {
+                DatePicker.SelectedDate = DatePicker.SelectedDate.Value.AddDays(-1);
+            }
+            else
+            {
+                DatePicker.SelectedDate = DateTime.Today.AddDays(-1);
+            }
+        }
+
+        private void DateToday_Click(object sender, RoutedEventArgs e)
+        {
+            DatePicker.SelectedDate = DateTime.Today;
+        }
+
+        private void DateTomorrow_Click(object sender, RoutedEventArgs e)
+        {
+            DatePicker.SelectedDate = DateTime.Today.AddDays(1);
+        }
+
+        private void DateIncrease_Click(object sender, RoutedEventArgs e)
+        {
+            if (DatePicker.SelectedDate.HasValue)
+            {
+                DatePicker.SelectedDate = DatePicker.SelectedDate.Value.AddDays(1);
+            }
+            else
+            {
+                DatePicker.SelectedDate = DateTime.Today.AddDays(1);
+            }
         }
     }
 }
