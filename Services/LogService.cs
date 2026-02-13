@@ -13,7 +13,6 @@ namespace DongNoti.Services
         /// </summary>
         public static readonly LogService Instance = new LogService();
 
-        // ILogService 인터페이스 구현 (인스턴스 메서드 - static 메서드 래핑)
         void ILogService.LogInfo(string message) => LogInfo(message);
         void ILogService.LogWarning(string message) => LogWarning(message);
         void ILogService.LogDebug(string message) => LogDebug(message);
@@ -25,31 +24,23 @@ namespace DongNoti.Services
 
         private static readonly object _lockObject = new object();
         private static bool _isEnabled = true;
-        private static DateTime _lastCleanupDate = DateTime.MinValue; // 마지막 정리 날짜
-        
-        // 메모리 버퍼
+        private static DateTime _lastCleanupDate = DateTime.MinValue;
         private static readonly List<string> _logBuffer = new List<string>();
         private static Timer? _flushTimer;
-        private static readonly int FlushIntervalMinutes = 60; // 1시간
-
-        // UI 로그 창 콜백
+        private static readonly int FlushIntervalMinutes = 60;
         private static Action<string>? _uiLogCallback;
 
         static LogService()
         {
-            // 로그 디렉토리 생성
             if (!Directory.Exists(LogDirectory))
             {
                 Directory.CreateDirectory(LogDirectory);
             }
-            
-            // 자동 저장 타이머 시작
             StartFlushTimer();
         }
 
         public static void Initialize()
         {
-            // 설정에서 로그 활성화 상태 로드 (StorageService가 준비된 후 호출)
             try
             {
                 var settings = StorageService.LoadSettings();
@@ -57,7 +48,7 @@ namespace DongNoti.Services
             }
             catch
             {
-                _isEnabled = true; // 기본값
+                _isEnabled = true;
             }
         }
 
@@ -132,25 +123,17 @@ namespace DongNoti.Services
                 {
                     var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {message}";
                     _logBuffer.Add(logEntry);
-
-                    // UI 로그 창에 전달
                     if (_uiLogCallback != null)
                     {
                         try
                         {
                             _uiLogCallback($"[{level}] {message}");
                         }
-                        catch
-                        {
-                            // UI 콜백 실패해도 계속 진행
-                        }
+                        catch { }
                     }
                 }
             }
-            catch
-            {
-                // 버퍼 추가 실패해도 계속 진행
-            }
+            catch { }
         }
 
         /// <summary>
@@ -169,26 +152,17 @@ namespace DongNoti.Services
                         return;
 
                     var logFile = GetLogFilePath();
-                    
-                    // 오래된 로그 파일 정리 (하루에 한 번만)
                     if (_lastCleanupDate.Date != DateTime.Now.Date)
                     {
                         CleanOldLogs();
                         _lastCleanupDate = DateTime.Now;
                     }
-
-                    // 버퍼의 모든 로그를 파일에 한 번에 저장
                     var allLogs = string.Join(Environment.NewLine, _logBuffer) + Environment.NewLine;
                     File.AppendAllText(logFile, allLogs, Encoding.UTF8);
-                    
-                    // 버퍼 초기화
                     _logBuffer.Clear();
                 }
             }
-            catch
-            {
-                // 저장 실패해도 계속 진행
-            }
+            catch { }
         }
 
         /// <summary>
@@ -196,7 +170,7 @@ namespace DongNoti.Services
         /// </summary>
         private static void StartFlushTimer()
         {
-            _flushTimer = new Timer(FlushIntervalMinutes * 60 * 1000); // 밀리초 단위
+            _flushTimer = new Timer(FlushIntervalMinutes * 60 * 1000);
             _flushTimer.Elapsed += (s, e) =>
             {
                 Flush();
@@ -212,7 +186,7 @@ namespace DongNoti.Services
         {
             _flushTimer?.Stop();
             _flushTimer?.Dispose();
-            Flush(); // 종료 시 남은 로그 저장
+            Flush();
         }
 
         public static void LogInfo(string message)
@@ -262,7 +236,6 @@ namespace DongNoti.Services
             }
             catch
             {
-                // 정리 실패해도 계속 진행
             }
         }
     }

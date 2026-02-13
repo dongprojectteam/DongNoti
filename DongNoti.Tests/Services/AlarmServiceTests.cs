@@ -15,7 +15,6 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void RecordAlarmHistory_UpdatesExistingHistoryInSameMinute()
         {
-            // Arrange
             var alarmId = Guid.NewGuid().ToString();
             var now = DateTime.Now;
             var currentMinute = TimeHelper.ToMinutePrecision(now);
@@ -26,12 +25,10 @@ namespace DongNoti.Tests.Services
                 {
                     AlarmId = alarmId,
                     AlarmTitle = "Test Alarm",
-                    TriggeredAt = currentMinute.AddSeconds(30), // 같은 분
+                    TriggeredAt = currentMinute.AddSeconds(30),
                     WasMissed = true
                 }
             };
-
-            // Act - 같은 분에 트리거된 경우 업데이트
             var existingHistory = history
                 .Where(h => h.AlarmId == alarmId)
                 .OrderByDescending(h => h.TriggeredAt)
@@ -42,11 +39,9 @@ namespace DongNoti.Tests.Services
                 var historyMinute = TimeHelper.ToMinutePrecision(existingHistory.TriggeredAt);
                 if (historyMinute == currentMinute)
                 {
-                    existingHistory.WasMissed = false; // 업데이트
+                    existingHistory.WasMissed = false;
                 }
             }
-
-            // Assert
             existingHistory.Should().NotBeNull();
             existingHistory!.WasMissed.Should().BeFalse();
         }
@@ -54,7 +49,6 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void RecordAlarmHistory_CreatesNewHistoryForDifferentMinute()
         {
-            // Arrange
             var alarmId = Guid.NewGuid().ToString();
             var now = DateTime.Now;
             var currentMinute = TimeHelper.ToMinutePrecision(now);
@@ -65,12 +59,10 @@ namespace DongNoti.Tests.Services
                 {
                     AlarmId = alarmId,
                     AlarmTitle = "Test Alarm",
-                    TriggeredAt = currentMinute.AddMinutes(-1), // 다른 분
+                    TriggeredAt = currentMinute.AddMinutes(-1),
                     WasMissed = true
                 }
             };
-
-            // Act - 다른 분에 트리거된 경우 새로 추가
             var existingHistory = history
                 .Where(h => h.AlarmId == alarmId)
                 .OrderByDescending(h => h.TriggeredAt)
@@ -96,15 +88,12 @@ namespace DongNoti.Tests.Services
                     WasMissed = false
                 });
             }
-
-            // Assert
             history.Should().HaveCount(2);
         }
 
         [Fact]
         public void RecordAlarmHistory_LimitsTo1000Entries()
         {
-            // Arrange
             var history = new List<AlarmHistory>();
             for (int i = 0; i < 1001; i++)
             {
@@ -117,7 +106,6 @@ namespace DongNoti.Tests.Services
                 });
             }
 
-            // Act - 최근 1000개만 유지
             if (history.Count > 1000)
             {
                 history = history
@@ -125,8 +113,6 @@ namespace DongNoti.Tests.Services
                     .Take(1000)
                     .ToList();
             }
-
-            // Assert
             history.Should().HaveCount(1000);
         }
 
@@ -137,7 +123,6 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void CleanupExpiredTemporaryAlarms_RemovesPastTemporaryAlarms()
         {
-            // Arrange
             var now = DateTime.Now;
             var alarms = new List<Alarm>
             {
@@ -145,8 +130,6 @@ namespace DongNoti.Tests.Services
                 new Alarm { Id = "2", Title = "Future Temp", DateTime = now.AddHours(1), IsTemporary = true },
                 new Alarm { Id = "3", Title = "Regular", DateTime = now.AddHours(-1), IsTemporary = false }
             };
-
-            // Act
             var expiredTemporary = alarms
                 .Where(a => a.IsTemporary && a.DateTime < now)
                 .ToList();
@@ -155,8 +138,6 @@ namespace DongNoti.Tests.Services
             {
                 alarms.Remove(alarm);
             }
-
-            // Assert
             alarms.Should().HaveCount(2);
             alarms.Should().NotContain(a => a.Id == "1");
             alarms.Should().Contain(a => a.Id == "2");
@@ -166,20 +147,15 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void CleanupExpiredTemporaryAlarms_KeepsFutureTemporaryAlarms()
         {
-            // Arrange
             var now = DateTime.Now;
             var alarms = new List<Alarm>
             {
                 new Alarm { Id = "1", Title = "Future Temp", DateTime = now.AddHours(1), IsTemporary = true },
                 new Alarm { Id = "2", Title = "Future Temp 2", DateTime = now.AddMinutes(30), IsTemporary = true }
             };
-
-            // Act
             var expiredTemporary = alarms
                 .Where(a => a.IsTemporary && a.DateTime < now)
                 .ToList();
-
-            // Assert
             expiredTemporary.Should().BeEmpty();
             alarms.Should().HaveCount(2);
         }
@@ -191,7 +167,6 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void CheckAlarms_TriggersAlarmAtExactMinute()
         {
-            // Arrange
             var now = DateTime.Now;
             var currentMinute = TimeHelper.ToMinutePrecision(now);
             var alarm = new Alarm
@@ -202,21 +177,16 @@ namespace DongNoti.Tests.Services
                 IsEnabled = true,
                 RepeatType = RepeatType.None
             };
-
-            // Act
             var nextAlarmTime = alarm.GetNextAlarmTime();
             var shouldTrigger = nextAlarmTime.HasValue &&
                                TimeHelper.ToMinutePrecision(nextAlarmTime.Value) == currentMinute &&
                                (alarm.LastTriggered == null || alarm.LastTriggered.Value < currentMinute);
-
-            // Assert
             shouldTrigger.Should().BeTrue();
         }
 
         [Fact]
         public void CheckAlarms_PreventsDuplicateTriggerInSameMinute()
         {
-            // Arrange
             var now = DateTime.Now;
             var currentMinute = TimeHelper.ToMinutePrecision(now);
             var alarm = new Alarm
@@ -226,16 +196,12 @@ namespace DongNoti.Tests.Services
                 DateTime = currentMinute,
                 IsEnabled = true,
                 RepeatType = RepeatType.None,
-                LastTriggered = currentMinute // 이미 트리거됨
+                LastTriggered = currentMinute
             };
-
-            // Act
             var nextAlarmTime = alarm.GetNextAlarmTime();
             var shouldTrigger = nextAlarmTime.HasValue &&
                                TimeHelper.ToMinutePrecision(nextAlarmTime.Value) == currentMinute &&
                                (alarm.LastTriggered == null || alarm.LastTriggered.Value < currentMinute);
-
-            // Assert
             shouldTrigger.Should().BeFalse();
         }
 

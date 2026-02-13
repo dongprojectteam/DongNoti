@@ -48,16 +48,12 @@ namespace DongNoti.Views
                 }
 
                 var stats = StatisticsService.CalculateStatistics(startDate, endDate);
-
-                // 요약 통계 업데이트
                 if (TotalTriggersText != null)
                     TotalTriggersText.Text = stats.TotalTriggers.ToString();
                 if (SuccessfulTriggersText != null)
                     SuccessfulTriggersText.Text = stats.SuccessfulTriggers.ToString();
                 if (MissedTriggersText != null)
                     MissedTriggersText.Text = stats.MissedTriggers.ToString();
-
-                // 알람별 통계 업데이트
                 if (AlarmStatsDataGrid != null)
                 {
                     var alarmStats = stats.AlarmTriggerCounts.Values

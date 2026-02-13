@@ -7,7 +7,7 @@ skinparam shadowing false
 package "DongNoti (WPF App)" {
   [App.xaml.cs\n- Single Instance (Mutex + NamedPipe)\n- Tray Icon / ContextMenu\n(Alarms/Dday 분리)\n- DdayWindow 관리] as App
   [MainWindow\n- Alarms DataGrid\n- Ddays DataGrid\n- 단축키 안내\n+ Views/*] as UI
-  [Views/\n- AlarmDialog (Alarm/Dday 설정)\n- DdayWindow (항상 최상단, Timer: 10s)\n- AlarmPopup (알람 팝업)\n- SettingsWindow\n- FocusModeDialog\n- StatisticsWindow\n- MissedAlarmsSummaryWindow\n- KeyboardShortcutsWindow\n- LogWindow\n- InputDialog] as Views
+  [Views/\n- AlarmDialog (Alarm/Dday 설정\n  Alarm 반복: 없음/매일/매주/매월/매년\n  Dday 반복: 없음/매년만)\n- DdayWindow (항상 최상단, Timer: 10s\n  컨텍스트 메뉴: 알람으로 등록, Dday 수정, 복제, 삭제)\n- AlarmPopup (알람 팝업)\n- SettingsWindow\n- FocusModeDialog\n- StatisticsWindow\n- MissedAlarmsSummaryWindow\n- KeyboardShortcutsWindow\n- LogWindow\n- InputDialog] as Views
   [AlarmService\n(Timer: 10s)\n- Alarm/Dday 통합 관리\n- CheckAlarms()\n- AlarmTriggered 이벤트] as AlarmService
   [FocusModeService\n(Timer: 60s)\n- 집중 모드 상태 관리\n- 놓친 알람 기록] as FocusModeService
   [NotificationService\n- Toast 알림] as NotificationService

@@ -14,22 +14,19 @@ namespace DongNoti.Services
         public void PlayAlarmSound(Alarm alarm)
         {
             LogService.LogInfo($"사운드 재생 시작: '{alarm.Title}'");
-            StopSound(); // 기존 사운드 중지
-
+            StopSound();
             try
             {
                 if (!string.IsNullOrEmpty(alarm.SoundFilePath) && File.Exists(alarm.SoundFilePath))
                 {
-                    // 사용자 지정 사운드 파일 재생
                     LogService.LogInfo($"사용자 지정 사운드 파일 재생: {alarm.SoundFilePath}");
                     _soundPlayer = new SoundPlayer(alarm.SoundFilePath);
-                    _soundPlayer.Load(); // 미리 로드
-                    _soundPlayer.PlayLooping(); // 반복 재생
+                    _soundPlayer.Load();
+                    _soundPlayer.PlayLooping();
                     LogService.LogInfo($"사용자 지정 사운드 파일 재생 완료 (반복 모드)");
                 }
                 else
                 {
-                    // 기본 시스템 사운드 반복 재생
                     LogService.LogInfo("기본 시스템 사운드 재생 (2초 간격 반복)");
                     StartSystemSoundLoop(logErrors: true);
                     LogService.LogInfo("기본 시스템 사운드 재생 시작");
@@ -38,7 +35,6 @@ namespace DongNoti.Services
             catch (Exception ex)
             {
                 LogService.LogError($"사운드 재생 실패: '{alarm.Title}'", ex);
-                // 실패 시 기본 시스템 사운드 사용
                 try
                 {
                     LogService.LogInfo("기본 시스템 사운드로 폴백 시도");
@@ -82,19 +78,15 @@ namespace DongNoti.Services
         {
             try
             {
-                // 기존 테스트 사운드 중지
                 StopTestSound();
 
                 LogService.LogDebug("테스트 사운드 재생 시작");
 
                 if (!string.IsNullOrEmpty(soundFilePath) && File.Exists(soundFilePath))
                 {
-                    // 사용자 지정 사운드 파일 재생
                     _testSoundPlayer = new SoundPlayer(soundFilePath);
                     _testSoundPlayer.Load();
-                    _testSoundPlayer.Play(); // 한 번만 재생
-                    
-                    // 3초 후 자동 중지
+                    _testSoundPlayer.Play();
                     _testStopTimer = new Timer(3000);
                     _testStopTimer.Elapsed += (s, e) => StopTestSound();
                     _testStopTimer.AutoReset = false;
@@ -102,10 +94,7 @@ namespace DongNoti.Services
                 }
                 else
                 {
-                    // 기본 시스템 사운드 재생
                     SystemSounds.Asterisk.Play();
-                    
-                    // 3초 후 자동 중지 (시스템 사운드는 즉시 재생되므로 타이머만 설정)
                     _testStopTimer = new Timer(3000);
                     _testStopTimer.Elapsed += (s, e) => StopTestSound();
                     _testStopTimer.AutoReset = false;
@@ -115,7 +104,6 @@ namespace DongNoti.Services
             catch (Exception ex)
             {
                 LogService.LogError("테스트 사운드 재생 중 오류", ex);
-                // 실패 시 기본 시스템 사운드 재생
                 try
                 {
                     SystemSounds.Asterisk.Play();

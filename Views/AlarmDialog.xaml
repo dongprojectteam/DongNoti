@@ -326,6 +326,7 @@
                                 <ComboBoxItem Content="매일" Tag="Daily"/>
                                 <ComboBoxItem Content="매주" Tag="Weekly"/>
                                 <ComboBoxItem Content="매월" Tag="Monthly"/>
+                                <ComboBoxItem Content="매년" Tag="Yearly"/>
                             </ComboBox>
                         </StackPanel>
 

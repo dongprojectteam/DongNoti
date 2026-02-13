@@ -15,7 +15,8 @@
     <Window.Resources>
         <ContextMenu x:Key="DdayItemContextMenu">
             <MenuItem x:Name="RegisterAsAlarmMenuItem" Header="알람으로 등록"/>
-            <MenuItem Header="Dday 복제하기"/>
+            <MenuItem Header="수정"/>
+            <MenuItem Header="복제"/>
             <MenuItem Header="삭제"/>
         </ContextMenu>
         <converters:CategoryColorConverter x:Key="CategoryColorConverter"/>
@@ -131,10 +132,42 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="{Binding TargetDate, StringFormat=yyyy-MM-dd}" 
-                                           FontSize="11" 
-                                           Foreground="#757575"
-                                           Margin="0,2,0,0"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding TargetDate, StringFormat=yyyy-MM-dd}" 
+                                               FontSize="11" 
+                                               Foreground="#757575"/>
+                                    <TextBlock Text="{Binding DdayRepeatDisplay}"
+                                               FontSize="11"
+                                               Foreground="#9E9E9E"
+                                               FontStyle="Italic"
+                                               Margin="8,0,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DdayRepeatDisplay}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding DdayYearsPassedDisplay}"
+                                               FontSize="11"
+                                               Foreground="#9E9E9E"
+                                               Margin="8,0,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DdayYearsPassedDisplay}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
                                 <TextBlock x:Name="MemoTextBlock"
                                            Text="{Binding Memo}" 
                                            FontSize="12" 

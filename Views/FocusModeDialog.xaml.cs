@@ -18,8 +18,6 @@ namespace DongNoti.Views
         {
             var presets = FocusModeService.Instance.GetPresets();
             PresetListBox.ItemsSource = presets;
-
-            // 기본 프리셋 선택
             var defaultPreset = FocusModeService.Instance.GetDefaultPreset();
             if (defaultPreset != null)
             {

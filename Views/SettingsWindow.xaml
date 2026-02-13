@@ -371,7 +371,7 @@
             <!-- 버전 정보 -->
             <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,20,0,0">
                 <TextBlock x:Name="VersionTextBlock"
-                           Text="DongNoti v1.0.5.2" 
+                           Text="DongNoti v1.0.5.3" 
                            FontSize="13" 
                            FontWeight="SemiBold"
                            Foreground="#616161"

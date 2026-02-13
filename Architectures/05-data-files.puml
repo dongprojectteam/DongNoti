@@ -28,8 +28,9 @@ Alarm 모델 주요 필드:
 - AlarmType (Alarm/Dday)
 - TargetDate (Dday용)
 - Memo (Dday용)
-- RepeatType, IsEnabled
-- Category, Priority
+- RepeatType (None/Daily/Weekly/Monthly/Yearly)
+  Alarm: 전체 선택 가능, Dday: None/Yearly만
+- IsEnabled, Category, Priority
 - SoundFilePath, AutoDismissMinutes
 - IsTemporary, LastTriggered
 - SelectedDaysOfWeek

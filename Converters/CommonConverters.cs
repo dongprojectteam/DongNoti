@@ -62,12 +62,10 @@ namespace DongNoti.Converters
             {
                 if (alarm.AlarmType == AlarmType.Alarm)
                 {
-                    // 반복 없는 알람 중 이미 지난 것
                     return alarm.RepeatType == RepeatType.None && alarm.GetNextAlarmTime() == null;
                 }
                 else if (alarm.AlarmType == AlarmType.Dday)
                 {
-                    // Dday는 IsDdayPassed 사용
                     return alarm.IsDdayPassed;
                 }
             }
@@ -95,7 +93,6 @@ namespace DongNoti.Converters
 
                 if (days.Value < 0)
                 {
-                    // 지난 날짜는 D+1, D+2 형식으로 표시
                     return $"D+{Math.Abs(days.Value)}";
                 }
                 else if (days.Value == 0)

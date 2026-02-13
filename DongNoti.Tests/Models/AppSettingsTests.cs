@@ -12,10 +12,7 @@ namespace DongNoti.Tests.Models
         [Fact]
         public void AppSettings_DefaultValues_AreCorrect()
         {
-            // Act
             var settings = new AppSettings();
-
-            // Assert
             settings.RunOnStartup.Should().BeTrue();
             settings.HideToTrayOnStartup.Should().BeFalse();
             settings.MinimizeToTray.Should().BeTrue();
@@ -30,30 +27,21 @@ namespace DongNoti.Tests.Models
         [Fact]
         public void AppSettings_FocusModePresets_IsNotNull()
         {
-            // Act
             var settings = new AppSettings();
-
-            // Assert
             settings.FocusModePresets.Should().NotBeNull();
         }
 
         [Fact]
         public void AppSettings_CurrentMissedAlarms_IsNotNull()
         {
-            // Act
             var settings = new AppSettings();
-
-            // Assert
             settings.CurrentMissedAlarms.Should().NotBeNull();
         }
 
         [Fact]
         public void AppSettings_AlarmHistory_IsNotNull()
         {
-            // Act
             var settings = new AppSettings();
-
-            // Assert
             settings.AlarmHistory.Should().NotBeNull();
         }
 
@@ -64,20 +52,14 @@ namespace DongNoti.Tests.Models
         [Fact]
         public void GetDefaultPresets_ReturnsSixPresets()
         {
-            // Act
             var presets = AppSettings.GetDefaultPresets();
-
-            // Assert
             presets.Should().HaveCount(6);
         }
 
         [Fact]
         public void GetDefaultPresets_ContainsExpectedPresets()
         {
-            // Act
             var presets = AppSettings.GetDefaultPresets();
-
-            // Assert
             presets.Should().Contain(p => p.Id == "30m" && p.Minutes == 30);
             presets.Should().Contain(p => p.Id == "1h" && p.Minutes == 60);
             presets.Should().Contain(p => p.Id == "1h30m" && p.Minutes == 90);
@@ -89,10 +71,7 @@ namespace DongNoti.Tests.Models
         [Fact]
         public void GetDefaultPresets_PresetsHaveKoreanNames()
         {
-            // Act
             var presets = AppSettings.GetDefaultPresets();
-
-            // Assert
             presets.Should().Contain(p => p.DisplayName == "30분");
             presets.Should().Contain(p => p.DisplayName == "1시간");
             presets.Should().Contain(p => p.DisplayName == "1시간 30분");
@@ -108,20 +87,14 @@ namespace DongNoti.Tests.Models
         [Fact]
         public void GetDefaultAlarmCategories_ReturnsFiveCategories()
         {
-            // Act
             var categories = AppSettings.GetDefaultAlarmCategories();
-
-            // Assert
             categories.Should().HaveCount(5);
         }
 
         [Fact]
         public void GetDefaultAlarmCategories_ContainsExpectedCategories()
         {
-            // Act
             var categories = AppSettings.GetDefaultAlarmCategories();
-
-            // Assert
             categories.Should().Contain("기본");
             categories.Should().Contain("업무");
             categories.Should().Contain("개인");
@@ -132,10 +105,7 @@ namespace DongNoti.Tests.Models
         [Fact]
         public void GetDefaultAlarmCategories_DefaultIsFirst()
         {
-            // Act
             var categories = AppSettings.GetDefaultAlarmCategories();
-
-            // Assert
             categories[0].Should().Be("기본");
         }
 
@@ -146,10 +116,7 @@ namespace DongNoti.Tests.Models
         [Fact]
         public void AlarmCategories_DefaultValue_MatchesGetDefaultAlarmCategories()
         {
-            // Act
             var settings = new AppSettings();
-
-            // Assert
             settings.AlarmCategories.Should().BeEquivalentTo(AppSettings.GetDefaultAlarmCategories());
         }
 
@@ -160,10 +127,7 @@ namespace DongNoti.Tests.Models
         [Fact]
         public void CategoryColors_DefaultValue_ContainsAnniversaryColor()
         {
-            // Act
             var settings = new AppSettings();
-
-            // Assert
             settings.CategoryColors.Should().ContainKey("기념일");
             settings.CategoryColors["기념일"].Should().Be("#E91E63");
         }
