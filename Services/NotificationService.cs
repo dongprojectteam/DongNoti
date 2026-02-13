@@ -15,20 +15,14 @@ namespace DongNoti.Services
             {
                 LogService.LogInfo($"Toast 알림 표시 시작: '{alarm.Title}'");
                 var toastXml = ToastNotificationManager.GetTemplateContent(ToastTemplateType.ToastText02);
-
-                // 제목 설정
                 var titleElements = toastXml.GetElementsByTagName("text");
                 titleElements[0].AppendChild(toastXml.CreateTextNode("알람"));
                 titleElements[1].AppendChild(toastXml.CreateTextNode(alarm.Title));
-
-                // 알람 시간 표시
                 var timeText = alarm.DateTime.ToString("yyyy-MM-dd HH:mm");
                 if (alarm.RepeatType != RepeatType.None)
                 {
                     timeText += $" ({alarm.RepeatTypeString})";
                 }
-
-                // Toast 속성 설정
                 var toastNode = toastXml.SelectSingleNode("/toast");
                 if (toastNode != null)
                 {

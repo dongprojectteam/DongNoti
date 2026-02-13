@@ -15,7 +15,6 @@ namespace DongNoti.Services
             var settings = StorageService.LoadSettings();
             var history = settings.AlarmHistory ?? new List<AlarmHistory>();
 
-            // 날짜 필터 적용
             if (startDate.HasValue || endDate.HasValue)
             {
                 history = history.Where(h =>

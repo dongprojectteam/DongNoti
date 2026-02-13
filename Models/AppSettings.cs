@@ -8,26 +8,16 @@ namespace DongNoti.Models
         public bool RunOnStartup { get; set; } = true;
         public bool HideToTrayOnStartup { get; set; } = false;
         public bool MinimizeToTray { get; set; } = true;
-        public bool EnableLogging { get; set; } = false; // 기본값: 켜짐
-        public bool ShowUILog { get; set; } = false; // UI 로그 창 표시 (기본값: 꺼짐)
-
-        // 집중모드 관련 설정
+        public bool EnableLogging { get; set; } = false;
+        public bool ShowUILog { get; set; } = false;
         public bool FocusModeActive { get; set; } = false;
         public DateTime? FocusModeEndTime { get; set; }
         public List<FocusModePreset> FocusModePresets { get; set; } = new List<FocusModePreset>();
         public string DefaultFocusModePresetId { get; set; } = "30m";
         public List<MissedAlarm> CurrentMissedAlarms { get; set; } = new List<MissedAlarm>();
-        
-        // 통계 데이터
         public List<AlarmHistory> AlarmHistory { get; set; } = new List<AlarmHistory>();
-        
-        // 알람 카테고리 목록
         public List<string> AlarmCategories { get; set; } = GetDefaultAlarmCategories();
-
-        // 카테고리별 색상 (D-Day 창·메인 창에서 사용, 키: 카테고리명, 값: hex 색상 예 "#E91E63")
         public Dictionary<string, string> CategoryColors { get; set; } = new Dictionary<string, string> { ["기념일"] = "#E91E63" };
-        
-        // Dday 창 표시 상태
         public bool DdayWindowVisible { get; set; } = false;
 
         /// <summary>

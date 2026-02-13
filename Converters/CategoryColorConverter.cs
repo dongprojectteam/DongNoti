@@ -33,7 +33,6 @@ namespace DongNoti.Converters
 
                 if (param == "Background" || param == "RowBackground")
                 {
-                    // 연한 배경: 색상에 흰색을 많이 섞음
                     var r = (byte)((color.Value.R + 255 * 15) / 16);
                     var g = (byte)((color.Value.G + 255 * 15) / 16);
                     var b = (byte)((color.Value.B + 255 * 15) / 16);
@@ -45,7 +44,6 @@ namespace DongNoti.Converters
                     return new Thickness(4, 0, 0, 1);
                 if (param == "BadgeBackground")
                 {
-                    // 배지용 연한 배경
                     var r = (byte)((color.Value.R + 255 * 15) / 16);
                     var g = (byte)((color.Value.G + 255 * 15) / 16);
                     var b = (byte)((color.Value.B + 255 * 15) / 16);

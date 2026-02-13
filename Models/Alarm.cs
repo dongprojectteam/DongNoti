@@ -8,16 +8,17 @@ namespace DongNoti.Models
 {
     public enum RepeatType
     {
-        None,      // 반복 없음
-        Daily,     // 매일
-        Weekly,    // 매주
-        Monthly    // 매월
+        None,
+        Daily,
+        Weekly,
+        Monthly,
+        Yearly
     }
 
     public enum AlarmType
     {
-        Alarm,     // 일반 알람
-        Dday       // Dday (카운트다운)
+        Alarm,
+        Dday
     }
 
     public class Alarm
@@ -27,16 +28,16 @@ namespace DongNoti.Models
         public DateTime DateTime { get; set; } = DateTime.Now.AddHours(1);
         public RepeatType RepeatType { get; set; } = RepeatType.None;
         public bool IsEnabled { get; set; } = true;
-        public string? SoundFilePath { get; set; } // null이면 기본 사운드 사용
-        public DateTime? LastTriggered { get; set; } // 마지막으로 알람이 울린 시간
-        public List<DayOfWeek> SelectedDaysOfWeek { get; set; } = new List<DayOfWeek>(); // 매주 반복 시 선택된 요일
-        public bool IsTemporary { get; set; } = false; // 일시적인 알람 (울린 후 자동 삭제)
-        public int AutoDismissMinutes { get; set; } = 1; // 알람 팝업 자동 종료 시간 (분)
-        public string? Category { get; set; } // 카테고리 (nullable, 기본값: null → "기본"으로 표시)
-        public Priority Priority { get; set; } = Priority.Normal; // 우선순위 (기본값: Normal)
-        public AlarmType AlarmType { get; set; } = AlarmType.Alarm; // 알람 타입 (기본값: Alarm, 기존 알람 호환성)
-        public DateTime? TargetDate { get; set; } // Dday 타입일 때 목표 날짜
-        public string? Memo { get; set; } // Dday 타입일 때 메모
+        public string? SoundFilePath { get; set; }
+        public DateTime? LastTriggered { get; set; }
+        public List<DayOfWeek> SelectedDaysOfWeek { get; set; } = new List<DayOfWeek>();
+        public bool IsTemporary { get; set; } = false;
+        public int AutoDismissMinutes { get; set; } = 1;
+        public string? Category { get; set; }
+        public Priority Priority { get; set; } = Priority.Normal;
+        public AlarmType AlarmType { get; set; } = AlarmType.Alarm;
+        public DateTime? TargetDate { get; set; }
+        public string? Memo { get; set; }
 
         [JsonIgnore]
         public string CategoryDisplay => Category ?? "기본";
@@ -45,7 +46,8 @@ namespace DongNoti.Models
         public int PrioritySortKey => (int)Priority;
 
         /// <summary>
-        /// Dday 타입일 때 남은 일수 계산 (음수는 지난 날짜)
+        /// Dday 타입일 때 남은 일수 계산 (음수는 지난 날짜).
+        /// 연간 반복일 때는 다음 도래일(같은 월/일) 기준으로 계산.
         /// </summary>
         [JsonIgnore]
         public int? DaysRemaining
@@ -57,13 +59,22 @@ namespace DongNoti.Models
 
                 var now = DateTime.Now.Date;
                 var target = TargetDate.Value.Date;
+
+                if (RepeatType == RepeatType.Yearly)
+                {
+                    var nextOccurrence = new DateTime(now.Year, target.Month, Math.Min(target.Day, DateTime.DaysInMonth(now.Year, target.Month)));
+                    if (nextOccurrence < now)
+                        nextOccurrence = new DateTime(now.Year + 1, target.Month, Math.Min(target.Day, DateTime.DaysInMonth(now.Year + 1, target.Month)));
+                    return (nextOccurrence - now).Days;
+                }
+
                 var diff = (target - now).Days;
                 return diff;
             }
         }
 
         /// <summary>
-        /// Dday 표시 문자열 (D-30, D-1, D-day 형식, 지난 날짜는 표시하지 않음)
+        /// Dday 표시 문자열 (D-30, D-1, D-day, 지난 날짜는 D+n 형식)
         /// </summary>
         [JsonIgnore]
         public string DdayDisplayString
@@ -78,17 +89,45 @@ namespace DongNoti.Models
                     return string.Empty;
 
                 if (days.Value < 0)
-                    return string.Empty; // 지난 날짜는 표시하지 않음
-
+                    return $"D+{Math.Abs(days.Value)}";
                 if (days.Value == 0)
                     return "D-day";
-                else
-                    return $"D-{days.Value}";
+                return $"D-{days.Value}";
             }
         }
 
         /// <summary>
-        /// Dday가 지났는지 여부
+        /// Dday의 목표일(TargetDate)이 1년 이상 지났을 때 "n년 지남" 형식 문자열.
+        /// 연간 반복(생일 등)도 목표일 기준으로 표시.
+        /// </summary>
+        [JsonIgnore]
+        public string DdayYearsPassedDisplay
+        {
+            get
+            {
+                if (AlarmType != AlarmType.Dday || !TargetDate.HasValue)
+                    return string.Empty;
+                var target = TargetDate.Value.Date;
+                var today = DateTime.Now.Date;
+                if (target >= today)
+                    return string.Empty;
+                int totalDays = (today - target).Days;
+                if (totalDays < 365)
+                    return string.Empty;
+                int years = totalDays / 365;
+                return years > 0 ? $"{years}년 지남" : string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Dday가 반복(연간 등)일 때 "반복" 표시용. 아니면 빈 문자열.
+        /// </summary>
+        [JsonIgnore]
+        public string DdayRepeatDisplay =>
+            AlarmType == AlarmType.Dday && RepeatType != RepeatType.None ? "반복" : string.Empty;
+
+        /// <summary>
+        /// Dday가 지났는지 여부. 연간 반복 D-day는 다음 도래일이 항상 있으므로 false.
         /// </summary>
         [JsonIgnore]
         public bool IsDdayPassed
@@ -96,6 +135,8 @@ namespace DongNoti.Models
             get
             {
                 if (AlarmType != AlarmType.Dday)
+                    return false;
+                if (RepeatType == RepeatType.Yearly)
                     return false;
 
                 var days = DaysRemaining;
@@ -108,7 +149,6 @@ namespace DongNoti.Models
         /// </summary>
         public DateTime? GetNextAlarmTime()
         {
-            // Dday 타입은 알람 트리거 대상이 아님
             if (AlarmType == AlarmType.Dday)
                 return null;
 
@@ -120,16 +160,11 @@ namespace DongNoti.Models
 
             if (RepeatType == RepeatType.None)
             {
-                // 반복 없음: 원래 시간이 현재 시간과 같거나 미래이면 반환
                 var alarmMinute = new DateTime(alarmTime.Year, alarmTime.Month, alarmTime.Day, 
                                              alarmTime.Hour, alarmTime.Minute, 0);
                 var nowMinute = TimeHelper.ToMinutePrecision(now);
-                
-                // 같은 분이거나 미래이면 반환
-                // 단, LastTriggered가 설정되어 있으면 이미 울린 알람이므로 null 반환
                 if (alarmMinute >= nowMinute)
                 {
-                    // 아직 울리지 않았거나, 같은 분에 다시 울려야 하는 경우
                     if (LastTriggered == null || LastTriggered.Value < alarmMinute)
                     {
                         return alarmMinute;
@@ -137,17 +172,12 @@ namespace DongNoti.Models
                 }
                 return null;
             }
-
-            // 반복이 있는 경우
             switch (RepeatType)
             {
                 case RepeatType.Daily:
-                    // 오늘의 알람 시간으로 설정 (분 단위로 비교)
                     var nowMinuteDaily = TimeHelper.ToMinutePrecision(now);
                     var todayAlarm = new DateTime(now.Year, now.Month, now.Day, 
                                                  alarmTime.Hour, alarmTime.Minute, 0);
-                    
-                    // 오늘 알람 시간(분)이 지났거나, 이미 트리거된 경우 내일로
                     if (todayAlarm < nowMinuteDaily || 
                         (LastTriggered.HasValue && LastTriggered.Value >= todayAlarm))
                         todayAlarm = todayAlarm.AddDays(1);
@@ -155,22 +185,15 @@ namespace DongNoti.Models
                     return todayAlarm;
 
                 case RepeatType.Weekly:
-                    // 선택된 요일이 있으면 해당 요일로, 없으면 원래 요일로
                     var selectedDays = SelectedDaysOfWeek?.Any() == true 
                         ? SelectedDaysOfWeek 
                         : new List<DayOfWeek> { alarmTime.DayOfWeek };
-                    
-                    // 오늘부터 7일 내에서 다음 알람 요일 찾기 (분 단위로 비교)
                     var nowMinute = TimeHelper.ToMinutePrecision(now);
                     var nextWeeklyAlarm = new DateTime(now.Year, now.Month, now.Day, 
                                                        alarmTime.Hour, alarmTime.Minute, 0);
-                    
-                    // 오늘 알람 시간(분)이 지났거나, 이미 트리거된 경우 내일부터 시작
                     if (nextWeeklyAlarm < nowMinute || 
                         (LastTriggered.HasValue && LastTriggered.Value >= nextWeeklyAlarm))
                         nextWeeklyAlarm = nextWeeklyAlarm.AddDays(1);
-                    
-                    // 7일 내에서 선택된 요일 찾기
                     for (int i = 0; i < 7; i++)
                     {
                         var checkDate = nextWeeklyAlarm.AddDays(i);
@@ -179,22 +202,16 @@ namespace DongNoti.Models
                             return checkDate;
                         }
                     }
-                    // 7일 내에 없으면 다음 주로
                     return nextWeeklyAlarm.AddDays(7);
 
                 case RepeatType.Monthly:
                     var nowMinuteMonthly = TimeHelper.ToMinutePrecision(now);
-                    
-                    // 매월 알람 날짜로 설정 (원래 알람의 날짜 사용, 날짜 오버플로우 방지)
                     var targetDay = Math.Min(alarmTime.Day, DateTime.DaysInMonth(now.Year, now.Month));
                     var monthlyAlarm = new DateTime(now.Year, now.Month, targetDay,
                                                     alarmTime.Hour, alarmTime.Minute, 0);
-                    
-                    // 오늘 알람 시간(분)이 지났거나, 이미 트리거된 경우 다음 달로
                     if (monthlyAlarm < nowMinuteMonthly || 
                         (LastTriggered.HasValue && LastTriggered.Value >= monthlyAlarm))
                     {
-                        // 다음 달 계산 (날짜 오버플로우 방지)
                         var nextMonth = now.AddMonths(1);
                         var validDay = Math.Min(alarmTime.Day, DateTime.DaysInMonth(nextMonth.Year, nextMonth.Month));
                         monthlyAlarm = new DateTime(nextMonth.Year, nextMonth.Month, validDay,
@@ -202,6 +219,22 @@ namespace DongNoti.Models
                     }
                     
                     return monthlyAlarm;
+
+                case RepeatType.Yearly:
+                    var nowMinuteYearly = TimeHelper.ToMinutePrecision(now);
+                    var yearTargetDay = Math.Min(alarmTime.Day, DateTime.DaysInMonth(now.Year, alarmTime.Month));
+                    var yearlyAlarm = new DateTime(now.Year, alarmTime.Month, yearTargetDay,
+                                                   alarmTime.Hour, alarmTime.Minute, 0);
+
+                    if (yearlyAlarm < nowMinuteYearly ||
+                        (LastTriggered.HasValue && LastTriggered.Value >= yearlyAlarm))
+                    {
+                        var nextYear = now.Year + 1;
+                        var yearValidDay = Math.Min(alarmTime.Day, DateTime.DaysInMonth(nextYear, alarmTime.Month));
+                        yearlyAlarm = new DateTime(nextYear, alarmTime.Month, yearValidDay,
+                                                  alarmTime.Hour, alarmTime.Minute, 0);
+                    }
+                    return yearlyAlarm;
 
                 default:
                     return null;
@@ -226,6 +259,7 @@ namespace DongNoti.Models
                     RepeatType.Daily => "매일",
                     RepeatType.Weekly => "매주",
                     RepeatType.Monthly => "매월",
+                    RepeatType.Yearly => "매년",
                     _ => "없음"
                 };
             }

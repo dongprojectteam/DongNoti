@@ -23,34 +23,26 @@ namespace DongNoti.Services
                 return _instance;
             }
         }
-
-        // 집중모드 상태 변경 이벤트
         public event Action<bool>? FocusModeChanged;
         public event Action? FocusModeEnded;
 
         private FocusModeService()
         {
             _settings = StorageService.LoadSettings();
-            
-            // 기본 프리셋이 없으면 초기화
             if (_settings.FocusModePresets == null || _settings.FocusModePresets.Count == 0)
             {
                 _settings.FocusModePresets = AppSettings.GetDefaultPresets();
                 StorageService.SaveSettings(_settings);
             }
-
-            // 앱 시작 시 집중모드가 활성화되어 있으면 복원
             if (_settings.FocusModeActive && _settings.FocusModeEndTime.HasValue)
             {
                 if (_settings.FocusModeEndTime.Value > DateTime.Now)
                 {
-                    // 아직 종료 시간이 안 됨 - 타이머 시작
                     StartUpdateTimer();
                     LogService.LogInfo($"집중모드 복원: 종료 시간 {_settings.FocusModeEndTime.Value:yyyy-MM-dd HH:mm}");
                 }
                 else
                 {
-                    // 종료 시간이 지남 - 집중모드 종료
                     LogService.LogInfo("집중모드 종료 시간이 지나 자동 종료");
                     StopFocusMode();
                 }
@@ -114,8 +106,6 @@ namespace DongNoti.Services
                 
                 _settings.FocusModeActive = false;
                 _settings.FocusModeEndTime = null;
-                // CurrentMissedAlarms는 요약창 표시를 위해 유지
-                
                 StorageService.SaveSettings(_settings);
                 
                 LogService.LogInfo($"집중모드 종료 (놓친 알람: {_settings.CurrentMissedAlarms?.Count ?? 0}개)");
@@ -158,8 +148,6 @@ namespace DongNoti.Services
                 {
                     _settings.CurrentMissedAlarms = new List<MissedAlarm>();
                 }
-
-                // 중복 체크 (같은 알람 ID가 이미 있으면 기록하지 않음)
                 if (_settings.CurrentMissedAlarms.Any(m => m.AlarmId == alarm.Id))
                 {
                     LogService.LogDebug($"놓친 알람 중복 기록 방지: '{alarm.Title}'");
@@ -232,22 +220,15 @@ namespace DongNoti.Services
         {
             _settings = StorageService.LoadSettings();
             var presets = GetPresets();
-            
-            // DefaultFocusModePresetId로 찾기
             var defaultPreset = presets.FirstOrDefault(p => p.Id == _settings.DefaultFocusModePresetId);
-            
-            // 없으면 첫 번째 프리셋 반환
             return defaultPreset ?? presets.FirstOrDefault();
         }
 
         private void StartUpdateTimer()
         {
-            // 기존 타이머가 있으면 정리
             _updateTimer?.Stop();
             _updateTimer?.Dispose();
-
-            // 1분마다 체크하는 타이머 시작
-            _updateTimer = new Timer(60000); // 60초
+            _updateTimer = new Timer(60000);
             _updateTimer.Elapsed += OnTimerElapsed;
             _updateTimer.AutoReset = true;
             _updateTimer.Start();
@@ -258,8 +239,6 @@ namespace DongNoti.Services
             try
             {
                 _settings = StorageService.LoadSettings();
-                
-                // 종료 시간 체크
                 if (_settings.FocusModeEndTime.HasValue && DateTime.Now >= _settings.FocusModeEndTime.Value)
                 {
                     LogService.LogInfo("집중모드 자동 종료 (시간 만료)");

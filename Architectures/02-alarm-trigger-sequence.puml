@@ -18,7 +18,7 @@ UI -> AlarmSvc : RefreshAlarms()\n(UI 즉시 반영)
 
 loop every 10s
   AlarmSvc -> AlarmSvc : CheckAlarms()
-  AlarmSvc -> Alarm : GetNextAlarmTime()
+  AlarmSvc -> Alarm : GetNextAlarmTime()\n(RepeatType: None/Daily/Weekly/Monthly/Yearly)
   Alarm --> AlarmSvc : nextAlarmTime\n(null if Dday type)
   alt AlarmType == Alarm\nand nextAlarmTime == currentMinute\nand LastTriggered < currentMinute
     AlarmSvc -> Alarm : LastTriggered = currentMinute

@@ -53,8 +53,6 @@ namespace DongNoti.Views
         private void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
         {
             UpdateLogBufferCount();
-            
-            // 1초마다 버퍼 개수 업데이트
             _updateTimer = new DispatcherTimer();
             _updateTimer.Interval = TimeSpan.FromSeconds(1);
             _updateTimer.Tick += (s, args) => UpdateLogBufferCount();
@@ -69,11 +67,7 @@ namespace DongNoti.Views
             MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTray;
             EnableLoggingCheckBox.IsChecked = _settings.EnableLogging;
             ShowUILogCheckBox.IsChecked = _settings.ShowUILog;
-            
-            // 프리셋 목록 로드
             LoadPresets();
-            
-            // 카테고리 목록 로드
             LoadCategories();
         }
 
@@ -176,16 +170,9 @@ namespace DongNoti.Views
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // 기본 카테고리 목록
                     var defaultCategories = AppSettings.GetDefaultAlarmCategories();
-                    
-                    // 현재 카테고리 목록
                     var currentCategories = _settings.AlarmCategories ?? AppSettings.GetDefaultAlarmCategories();
-                    
-                    // 사라질 카테고리들 찾기
                     var removedCategories = currentCategories.Where(c => c != "기본" && !defaultCategories.Contains(c)).ToList();
-                    
-                    // 알람들의 카테고리를 "기본"으로 변경
                     if (removedCategories.Count > 0)
                     {
                         var alarms = StorageService.LoadAlarms();
@@ -194,7 +181,7 @@ namespace DongNoti.Views
                         {
                             if (alarm.Category != null && removedCategories.Contains(alarm.Category))
                             {
-                                alarm.Category = null; // null = "기본"
+                                alarm.Category = null;
                                 hasChanges = true;
                             }
                         }
@@ -207,8 +194,6 @@ namespace DongNoti.Views
                             }
                         }
                     }
-                    
-                    // 카테고리 목록 및 색상 초기화
                     _settings.AlarmCategories = defaultCategories;
                     _settings.CategoryColors = new Dictionary<string, string> { ["기념일"] = "#E91E63" };
                     StorageService.SaveSettings(_settings);
@@ -277,15 +262,13 @@ namespace DongNoti.Views
                         _settings.AlarmCategories = categories;
                         _settings.CategoryColors?.Remove(category);
                         StorageService.SaveSettings(_settings);
-                        
-                        // 해당 카테고리를 사용하는 알람들을 '기본'으로 변경
                         var alarms = StorageService.LoadAlarms();
                         bool hasChanges = false;
                         foreach (var alarm in alarms)
                         {
                             if (alarm.Category == category)
                             {
-                                alarm.Category = null; // null = "기본"
+                                alarm.Category = null;
                                 hasChanges = true;
                             }
                         }
@@ -322,8 +305,6 @@ namespace DongNoti.Views
             try
             {
                 var presets = _settings.FocusModePresets ?? AppSettings.GetDefaultPresets();
-                
-                // 기본 프리셋이 없으면 초기화
                 if (presets.Count == 0)
                 {
                     presets = AppSettings.GetDefaultPresets();
@@ -333,8 +314,6 @@ namespace DongNoti.Views
                         _settings.DefaultFocusModePresetId = "30m";
                     }
                 }
-                
-                // 각 프리셋에 IsDefault 속성 추가
                 var presetViewModels = presets.Select(p => new PresetViewModel
                 {
                     Id = p.Id,
@@ -395,14 +374,10 @@ namespace DongNoti.Views
             try
             {
                 var dataFolder = StorageService.GetDataDirectory();
-                
-                // 폴더가 없으면 생성
                 if (!Directory.Exists(dataFolder))
                 {
                     Directory.CreateDirectory(dataFolder);
                 }
-                
-                // Windows 탐색기로 폴더 열기
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = dataFolder,
@@ -467,8 +442,6 @@ namespace DongNoti.Views
             _settings.MinimizeToTray = MinimizeToTrayCheckBox.IsChecked ?? false;
             _settings.EnableLogging = EnableLoggingCheckBox.IsChecked ?? true;
             _settings.ShowUILog = ShowUILogCheckBox.IsChecked ?? false;
-
-            // 카테고리 목록 및 색상 저장
             if (CategoriesItemsControl.ItemsSource is IEnumerable<CategoryItem> categoryItems)
             {
                 _settings.AlarmCategories = categoryItems.Select(c => c.Name).ToList();
@@ -476,8 +449,6 @@ namespace DongNoti.Views
                 foreach (var item in categoryItems)
                     _settings.CategoryColors[item.Name] = item.Color ?? "";
             }
-
-            // 프리셋 목록 저장 (ViewModel에서 실제 모델로 변환)
             if (PresetsItemsControl.ItemsSource is IEnumerable<PresetViewModel> presetViewModels)
             {
                 var presets = presetViewModels.Select(vm => new FocusModePreset
@@ -487,8 +458,6 @@ namespace DongNoti.Views
                     Minutes = vm.Minutes
                 }).ToList();
                 _settings.FocusModePresets = presets;
-                
-                // 기본 프리셋 ID 저장
                 var defaultPreset = presetViewModels.FirstOrDefault(vm => vm.IsDefault);
                 if (defaultPreset != null)
                 {
@@ -497,17 +466,11 @@ namespace DongNoti.Views
             }
 
             StorageService.SaveSettings(_settings);
-
-            // 로그 서비스 설정 업데이트
             LogService.SetEnabled(_settings.EnableLogging);
-
-            // UI 로그 창 설정 업데이트
             if (Application.Current is App app)
             {
                 app.SetUILogEnabled(_settings.ShowUILog);
             }
-
-            // 자동 실행 설정 업데이트
             StartupService.SetStartup(_settings.RunOnStartup);
 
             DialogResult = true;
@@ -591,7 +554,6 @@ namespace DongNoti.Views
         {
             try
             {
-                // 시간 입력 다이얼로그
                 var inputDialog = new InputDialog
                 {
                     Title = "프리셋 추가",
@@ -603,7 +565,6 @@ namespace DongNoti.Views
                 {
                     if (int.TryParse(inputDialog.Answer, out int minutes) && minutes > 0)
                     {
-                        // 중복 체크
                         var existingPresets = _settings.FocusModePresets ?? new List<FocusModePreset>();
                         if (existingPresets.Any(p => p.Minutes == minutes))
                         {
@@ -613,8 +574,6 @@ namespace DongNoti.Views
                                           MessageBoxImage.Information);
                             return;
                         }
-
-                        // 새 프리셋 생성
                         var hours = minutes / 60;
                         var remainingMinutes = minutes % 60;
                         string displayName;
@@ -673,7 +632,6 @@ namespace DongNoti.Views
             {
                 if (sender is Button button && button.Tag is PresetViewModel preset)
                 {
-                    // 기본 프리셋은 삭제 불가
                     if (preset.IsDefault)
                     {
                         MessageBox.Show("기본 프리셋은 삭제할 수 없습니다.\n다른 프리셋을 기본값으로 설정한 후 삭제해주세요.",
@@ -734,7 +692,6 @@ namespace DongNoti.Views
         {
             try
             {
-                // 현재 알람 목록 가져오기
                 var alarms = StorageService.LoadAlarms();
                 
                 if (alarms == null || alarms.Count == 0)
@@ -745,8 +702,6 @@ namespace DongNoti.Views
                                    MessageBoxImage.Information);
                     return;
                 }
-
-                // 내보내기 실행
                 if (StorageService.ExportAlarms(alarms))
                 {
                     MessageBox.Show($"{alarms.Count}개의 알람을 내보냈습니다.", 
@@ -769,7 +724,6 @@ namespace DongNoti.Views
         {
             try
             {
-                // 파일에서  가져오기
                 var importedAlarms = StorageService.ImportAlarms();
                 
                 if (importedAlarms == null)
@@ -785,10 +739,7 @@ namespace DongNoti.Views
                                    MessageBoxImage.Information);
                     return;
                 }
-
-                // 기존 알람과 병합할지 교체할지 선택
                 var currentAlarms = StorageService.LoadAlarms();
-                // LoadAlarms()는 null을 반환하지 않지만, Nullable 분석/미래 변경에 대비해 방어적으로 처리
                 currentAlarms ??= new List<Alarm>();
                 var hasExistingAlarms = currentAlarms.Count > 0;
 
@@ -810,7 +761,6 @@ namespace DongNoti.Views
                     }
                     else if (result == MessageBoxResult.Yes)
                     {
-                        // 병합: 중복 제거 (ID 기준)
                         var mergedAlarms = new List<Alarm>(currentAlarms);
                         foreach (var importedAlarm in importedAlarms)
                         {
@@ -825,9 +775,8 @@ namespace DongNoti.Views
                                        MessageBoxButton.OK, 
                                        MessageBoxImage.Information);
                     }
-                    else // No
+                    else
                     {
-                        // 교체
                         StorageService.SaveAlarms(importedAlarms);
                         MessageBox.Show($"알람 교체 완료: {importedAlarms.Count}개", 
                                        "완료", 
@@ -837,15 +786,12 @@ namespace DongNoti.Views
                 }
                 else
                 {
-                    // 기존 알람이 없으면 그냥 저장
                     StorageService.SaveAlarms(importedAlarms);
                     MessageBox.Show($"{importedAlarms.Count}개의 알람을 가져왔습니다.", 
                                    "완료", 
                                    MessageBoxButton.OK, 
                                    MessageBoxImage.Information);
                 }
-
-                // AlarmService 새로고침
                 if (Application.Current is App app)
                 {
                     app.RefreshAlarms(refreshMainWindow: true);

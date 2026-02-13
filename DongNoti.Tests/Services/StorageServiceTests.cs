@@ -37,10 +37,7 @@ namespace DongNoti.Tests.Services
                     Directory.Delete(_testDirectory, true);
                 }
             }
-            catch
-            {
-                // Cleanup failure is acceptable in tests
-            }
+            catch { }
         }
 
         #region JSON Serialization/Deserialization Tests
@@ -48,7 +45,6 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void Alarm_CanBeSerializedAndDeserialized()
         {
-            // Arrange
             var alarm = new Alarm
             {
                 Id = "test-id",
@@ -61,12 +57,8 @@ namespace DongNoti.Tests.Services
                 AutoDismissMinutes = 5,
                 Memo = "메모 내용"
             };
-
-            // Act
             var json = JsonSerializer.Serialize(alarm, _jsonOptions);
             var deserialized = JsonSerializer.Deserialize<Alarm>(json, _jsonOptions);
-
-            // Assert
             deserialized.Should().NotBeNull();
             deserialized!.Id.Should().Be("test-id");
             deserialized.Title.Should().Be("테스트 알람");
@@ -82,19 +74,14 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void AlarmList_CanBeSerializedAndDeserialized()
         {
-            // Arrange
             var alarms = new List<Alarm>
             {
                 new Alarm { Title = "알람 1", RepeatType = RepeatType.None },
                 new Alarm { Title = "알람 2", RepeatType = RepeatType.Daily },
                 new Alarm { Title = "알람 3", RepeatType = RepeatType.Weekly, SelectedDaysOfWeek = new List<DayOfWeek> { DayOfWeek.Monday, DayOfWeek.Friday } }
             };
-
-            // Act
             var json = JsonSerializer.Serialize(alarms, _jsonOptions);
             var deserialized = JsonSerializer.Deserialize<List<Alarm>>(json, _jsonOptions);
-
-            // Assert
             deserialized.Should().NotBeNull();
             deserialized.Should().HaveCount(3);
             deserialized![0].Title.Should().Be("알람 1");
@@ -106,7 +93,6 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void AppSettings_CanBeSerializedAndDeserialized()
         {
-            // Arrange
             var settings = new AppSettings
             {
                 RunOnStartup = false,
@@ -118,12 +104,8 @@ namespace DongNoti.Tests.Services
                 DefaultFocusModePresetId = "1h",
                 DdayWindowVisible = true
             };
-
-            // Act
             var json = JsonSerializer.Serialize(settings, _jsonOptions);
             var deserialized = JsonSerializer.Deserialize<AppSettings>(json, _jsonOptions);
-
-            // Assert
             deserialized.Should().NotBeNull();
             deserialized!.RunOnStartup.Should().BeFalse();
             deserialized.HideToTrayOnStartup.Should().BeTrue();
@@ -137,7 +119,6 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void DdayAlarm_CanBeSerializedAndDeserialized()
         {
-            // Arrange
             var dday = new Alarm
             {
                 Title = "기념일",
@@ -145,12 +126,8 @@ namespace DongNoti.Tests.Services
                 TargetDate = new DateTime(2024, 12, 25),
                 Memo = "크리스마스"
             };
-
-            // Act
             var json = JsonSerializer.Serialize(dday, _jsonOptions);
             var deserialized = JsonSerializer.Deserialize<Alarm>(json, _jsonOptions);
-
-            // Assert
             deserialized.Should().NotBeNull();
             deserialized!.AlarmType.Should().Be(AlarmType.Dday);
             deserialized.TargetDate.Should().Be(new DateTime(2024, 12, 25));
@@ -161,25 +138,16 @@ namespace DongNoti.Tests.Services
 
         #region File I/O Tests
 
-        // Note: ExportAlarms and ImportAlarms tests are skipped because they
-        // use MessageBox dialogs which hang in non-interactive test environments.
-        // These methods should be tested manually or refactored to separate UI from logic.
-
         [Fact]
         public void ExportAlarms_WritesJsonToFile()
         {
-            // Arrange
             var alarms = new List<Alarm>
             {
                 new Alarm { Title = "TestAlarm1" },
                 new Alarm { Title = "TestAlarm2" }
             };
             var filePath = Path.Combine(_testDirectory, "export_test.json");
-
-            // Act
             var result = StorageService.ExportAlarms(alarms, filePath);
-
-            // Assert
             result.Should().BeTrue();
             File.Exists(filePath).Should().BeTrue();
             
@@ -191,7 +159,6 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void ImportAlarms_ReadsJsonFromFile()
         {
-            // Arrange
             var alarms = new List<Alarm>
             {
                 new Alarm { Title = "ImportTest" }
@@ -199,21 +166,11 @@ namespace DongNoti.Tests.Services
             var filePath = Path.Combine(_testDirectory, "import_test.json");
             var json = JsonSerializer.Serialize(alarms, _jsonOptions);
             File.WriteAllText(filePath, json);
-
-            // Act
             var result = StorageService.ImportAlarms(filePath);
-
-            // Assert
             result.Should().NotBeNull();
             result.Should().HaveCount(1);
             result![0].Title.Should().Be("ImportTest");
         }
-
-        // These tests are disabled because ImportAlarms uses MessageBox.Show() which hangs in tests
-        // [Fact]
-        // public void ImportAlarms_EmptyFile_ReturnsNull() { }
-        // [Fact]
-        // public void ImportAlarms_NonExistentFile_ReturnsNull() { }
 
         #endregion
 
@@ -222,10 +179,7 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void GetDataDirectory_ReturnsNonEmptyPath()
         {
-            // Act
             var result = StorageService.GetDataDirectory();
-
-            // Assert
             result.Should().NotBeNullOrEmpty();
             result.Should().Contain("DongNoti");
         }
@@ -237,46 +191,30 @@ namespace DongNoti.Tests.Services
         [Fact]
         public void Instance_ImplementsIStorageService()
         {
-            // Assert
             StorageService.Instance.Should().BeAssignableTo<IStorageService>();
         }
 
         [Fact]
         public void IStorageService_LoadAlarms_ReturnsNonNull()
         {
-            // Arrange
             IStorageService service = StorageService.Instance;
-
-            // Act
             var result = service.LoadAlarms();
-
-            // Assert
             result.Should().NotBeNull();
         }
 
         [Fact]
         public void IStorageService_LoadSettings_ReturnsNonNull()
         {
-            // Arrange
             IStorageService service = StorageService.Instance;
-
-            // Act
             var result = service.LoadSettings();
-
-            // Assert
             result.Should().NotBeNull();
         }
 
         [Fact]
         public void IStorageService_GetDataDirectory_ReturnsNonEmpty()
         {
-            // Arrange
             IStorageService service = StorageService.Instance;
-
-            // Act
             var result = service.GetDataDirectory();
-
-            // Assert
             result.Should().NotBeNullOrEmpty();
         }
 

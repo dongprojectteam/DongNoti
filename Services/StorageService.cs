@@ -18,7 +18,6 @@ namespace DongNoti.Services
         /// </summary>
         public static readonly StorageService Instance = new StorageService();
 
-        // IStorageService 인터페이스 구현 (인스턴스 메서드 - static 메서드 래핑)
         List<Alarm> IStorageService.LoadAlarms() => LoadAlarms();
         void IStorageService.SaveAlarms(List<Alarm> alarms) => SaveAlarms(alarms);
         AppSettings IStorageService.LoadSettings() => LoadSettings();
@@ -44,7 +43,6 @@ namespace DongNoti.Services
 
         static StorageService()
         {
-            // 데이터 디렉토리가 없으면 생성
             if (!Directory.Exists(DataDirectory))
             {
                 Directory.CreateDirectory(DataDirectory);

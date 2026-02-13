@@ -21,26 +21,17 @@ namespace DongNoti
         private List<Alarm> _alarms = new List<Alarm>();
         private CollectionViewSource? _alarmsViewSource;
         private CollectionViewSource? _ddaysViewSource;
-        private bool _isSaving = false; // 저장 중 플래그
-        private bool _isLoading = false; // 로드 중 플래그 (로드 중에는 SaveAlarms 방지)
-        private bool _isInitialLoad = true; // 초기 로드 플래그 (앱 시작 시 첫 로드 완료까지 SaveAlarms 방지)
+        private bool _isSaving = false;
+        private bool _isLoading = false;
+        private bool _isInitialLoad = true;
 
         public MainWindow()
         {
             InitializeComponent();
-            // LoadAlarms는 App.xaml.cs에서 MainWindow 생성 후 호출하므로 여기서는 호출하지 않음
-            
-            // 집중모드 이벤트 구독
             FocusModeService.Instance.FocusModeChanged += OnFocusModeChanged;
             FocusModeService.Instance.FocusModeEnded += OnFocusModeEnded;
-            
-            // 초기 집중모드 상태 업데이트
             UpdateFocusModeUI();
-            
-            // 카테고리 필터 초기화
             LoadCategoryFilter();
-            
-            // Dday 창 토글 버튼 초기 상태 업데이트
             Loaded += (s, e) => UpdateDdayWindowToggleButton();
         }
 
@@ -50,8 +41,6 @@ namespace DongNoti
             {
                 var settings = StorageService.LoadSettings();
                 var categories = settings.AlarmCategories ?? AppSettings.GetDefaultAlarmCategories();
-
-                // "기본"이 없으면 추가
                 if (!categories.Contains("기본"))
                 {
                     categories.Insert(0, "기본");
@@ -76,12 +65,10 @@ namespace DongNoti
 
         public void LoadAlarms()
         {
-            // 백그라운드 스레드에서 로드하여 UI 블로킹 방지
             System.Threading.Tasks.Task.Run(() =>
             {
                 try
                 {
-                    // AlarmService에서 이미 로드된 알람 사용 (중복 파일 I/O 방지)
                     List<Alarm> loadedAlarms;
                     if (Application.Current is App app && app.AlarmService != null)
                     {
@@ -89,30 +76,20 @@ namespace DongNoti
                     }
                     else
                     {
-                        // AlarmService가 아직 초기화되지 않은 경우에만 파일에서 로드
                         loadedAlarms = StorageService.LoadAlarms();
                     }
-                    
-                    // UI 스레드에서 업데이트
                     Dispatcher.BeginInvoke(() =>
                     {
                         try
                         {
-                            _isLoading = true; // 로드 시작 (가장 먼저 설정)
+                            _isLoading = true;
                             _alarms = loadedAlarms;
-                            
-                            // UI 강제 업데이트
                             var currentSelection = AlarmsDataGrid.SelectedItem;
-                            
-                            // ItemsSource를 null로 설정할 때도 이벤트가 발생할 수 있으므로 주의
                             AlarmsDataGrid.ItemsSource = null;
-                            
-                            // 약간의 지연을 두어 이벤트가 완전히 처리되도록 함
                             Dispatcher.BeginInvoke(() =>
                             {
                                 try
                                 {
-                                    // 알람용 CollectionViewSource 설정 (Alarm 타입만, 지난 알람도 표시)
                                     var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
                                     _alarmsViewSource = new CollectionViewSource
                                     {
@@ -121,8 +98,6 @@ namespace DongNoti
                                     _alarmsViewSource.Filter += AlarmsViewSource_Filter;
                                     
                                     AlarmsDataGrid.ItemsSource = _alarmsViewSource.View;
-                                    
-                                    // Dday용 CollectionViewSource 설정 (Dday 타입만, 모든 Dday 표시)
                                     var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
                                     _ddaysViewSource = new CollectionViewSource
                                     {
@@ -132,8 +107,6 @@ namespace DongNoti
                                     
                                     DdaysDataGrid.ItemsSource = _ddaysViewSource.View;
                                     ApplyDefaultSort();
-                                    
-                                    // 선택 상태 복원
                                     if (currentSelection != null && currentSelection is Alarm selectedAlarm)
                                     {
                                         var restoredAlarm = _alarms.FirstOrDefault(a => a.Id == selectedAlarm.Id);
@@ -142,24 +115,22 @@ namespace DongNoti
                                             AlarmsDataGrid.SelectedItem = restoredAlarm;
                                         }
                                     }
-                                    
                                     UpdateStatus();
-                                    _isLoading = false; // 로드 완료 (모든 UI 업데이트 후)
-                                    _isInitialLoad = false; // 초기 로드 완료 (이제부터 SaveAlarms 허용)
-                                    // StorageService.LoadAlarms()에서 이미 로그를 출력하므로 중복 로그 제거
+                                    _isLoading = false;
+                                    _isInitialLoad = false;
                                 }
                                 catch (Exception ex)
                                 {
-                                    _isLoading = false; // 오류 발생 시에도 플래그 해제
-                                    _isInitialLoad = false; // 오류 발생 시에도 초기 로드 플래그 해제
+                                    _isLoading = false;
+                                    _isInitialLoad = false;
                                     LogService.LogError("알람 로드 중 오류 (내부)", ex);
                                 }
                             }, System.Windows.Threading.DispatcherPriority.Loaded);
                         }
                         catch (Exception ex)
                         {
-                            _isLoading = false; // 오류 발생 시에도 플래그 해제
-                            _isInitialLoad = false; // 오류 발생 시에도 초기 로드 플래그 해제
+                            _isLoading = false;
+                            _isInitialLoad = false;
                             LogService.LogError("알람 로드 중 오류", ex);
                             MessageBox.Show($"알람을 불러오는 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
                         }
@@ -174,20 +145,15 @@ namespace DongNoti
 
         private void SaveAlarms()
         {
-            // 초기 로드 중에는 저장하지 않음 (앱 시작 시 불필요한 저장 방지)
             if (_isInitialLoad || _isLoading)
             {
                 return;
             }
-            
-            // 중복 저장 방지
             if (_isSaving)
             {
                 LogService.LogWarning("이미 저장 중입니다. 중복 저장 방지");
                 return;
             }
-
-            // 동기적으로 저장하여 즉시 반영 (파일 I/O는 빠르므로 UI 블로킹 최소화)
             try
             {
                 if (_alarms == null)
@@ -198,11 +164,8 @@ namespace DongNoti
 
                 _isSaving = true;
                 StorageService.SaveAlarms(_alarms);
-                
-                // App의 AlarmService 새로고침 및 트레이 메뉴 업데이트
                 if (Application.Current is App app)
                 {
-                    // RefreshAlarms() 내부에서 AlarmService.RefreshAlarms()와 트레이 메뉴 업데이트를 모두 수행
                     app.RefreshAlarms(refreshMainWindow: false);
                 }
                 
@@ -225,8 +188,6 @@ namespace DongNoti
             {
                 if (_alarms == null)
                     return;
-
-                // 빈 상태 표시 (지난 항목도 포함)
                 var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
                 var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
                 
@@ -247,8 +208,6 @@ namespace DongNoti
                 {
                     StatusText.Text = $"총 {_alarms.Count}개 알람 (활성: {enabledCount}개)";
                 }
-
-                // 다음 알람 정보 업데이트
                 UpdateNextAlarmInfo();
             }
             catch (Exception ex)
@@ -263,8 +222,6 @@ namespace DongNoti
             {
                 if (NextAlarmText == null)
                     return;
-
-                // 집중모드가 활성화되어 있으면 표시
                 if (FocusModeService.Instance.IsFocusModeActive)
                 {
                     var remaining = FocusModeService.Instance.GetRemainingTime();
@@ -336,15 +293,9 @@ namespace DongNoti
                 if (Application.Current is App app && app.AlarmService != null)
                 {
                     var updatedAlarms = app.AlarmService.GetAlarms();
-                    
-                    // 현재 선택된 항목 저장
                     var currentAlarmSelection = AlarmsDataGrid.SelectedItem as Alarm;
                     var currentDdaySelection = DdaysDataGrid.SelectedItem as Alarm;
-                    
-                    // _alarms 업데이트
                     _alarms = updatedAlarms;
-                    
-                    // 알람용 CollectionViewSource 새로 생성 (변환기 재호출을 위해, 지난 알람도 표시)
                     var alarms = _alarms.Where(a => a.AlarmType == AlarmType.Alarm).ToList();
                     if (_alarmsViewSource != null)
                     {
@@ -354,10 +305,7 @@ namespace DongNoti
                     _alarmsViewSource.Filter += AlarmsViewSource_Filter;
                     AlarmsDataGrid.ItemsSource = null;
                     AlarmsDataGrid.ItemsSource = _alarmsViewSource.View;
-                    // 행 스타일의 변환기 재호출을 위해 Items.Refresh 호출
                     AlarmsDataGrid.Items.Refresh();
-                    
-                    // Dday용 CollectionViewSource 새로 생성 (변환기 재호출을 위해, 모든 Dday 표시)
                     var ddays = _alarms.Where(a => a.AlarmType == AlarmType.Dday).ToList();
                     if (_ddaysViewSource != null)
                     {
@@ -367,12 +315,8 @@ namespace DongNoti
                     _ddaysViewSource.Filter += DdaysViewSource_Filter;
                     DdaysDataGrid.ItemsSource = null;
                     DdaysDataGrid.ItemsSource = _ddaysViewSource.View;
-                    // 행 스타일의 변환기 재호출을 위해 Items.Refresh 호출
                     DdaysDataGrid.Items.Refresh();
-                    
                     ApplyDefaultSort();
-                    
-                    // 선택 상태 복원
                     if (currentAlarmSelection != null)
                     {
                         var restoredAlarm = updatedAlarms.FirstOrDefault(a => a.Id == currentAlarmSelection.Id);
@@ -390,8 +334,6 @@ namespace DongNoti
                             DdaysDataGrid.SelectedItem = restoredDday;
                         }
                     }
-                    
-                    // 상태 업데이트
                     UpdateStatus();
                     
                     LogService.LogDebug("알람 목록 새로고침 완료 (ItemsSource 직접 업데이트)");
@@ -412,17 +354,11 @@ namespace DongNoti
                     e.Accepted = false;
                     return;
                 }
-
-                // Alarm 타입만 필터링 (이미 Source에서 필터링했지만 안전을 위해)
                 if (alarm.AlarmType != AlarmType.Alarm)
                 {
                     e.Accepted = false;
                     return;
                 }
-
-                // 지난 알람은 필터링하지 않음 (표시하되 스타일로 구분)
-
-                // 검색 필터
                 if (SearchTextBox != null)
                 {
                     var searchText = SearchTextBox.Text?.Trim() ?? string.Empty;
@@ -435,8 +371,6 @@ namespace DongNoti
                         }
                     }
                 }
-
-                // 필터 ComboBox
                 if (FilterComboBox != null)
                 {
                     var filterItem = FilterComboBox.SelectedItem as ComboBoxItem;
@@ -445,7 +379,6 @@ namespace DongNoti
                     switch (filterTag)
                     {
                         case "DdayOnly":
-                            // Dday는 별도 DataGrid에 표시되므로 여기서는 제외
                             e.Accepted = false;
                             return;
                         case "Enabled":
@@ -490,15 +423,19 @@ namespace DongNoti
                                 return;
                             }
                             break;
+                        case "Yearly":
+                            if (alarm.RepeatType != RepeatType.Yearly)
+                            {
+                                e.Accepted = false;
+                                return;
+                            }
+                            break;
                     }
                 }
-
-                // 카테고리 필터
                 if (CategoryFilterComboBox != null)
                 {
                     var categoryFilterItem = CategoryFilterComboBox.SelectedItem as ComboBoxItem;
                     var categoryFilterTag = categoryFilterItem?.Tag?.ToString() ?? "All";
-                    
                     if (categoryFilterTag != "All")
                     {
                         var alarmCategory = alarm.Category ?? "기본";
@@ -509,13 +446,12 @@ namespace DongNoti
                         }
                     }
                 }
-
                 e.Accepted = true;
             }
             catch (Exception ex)
             {
                 LogService.LogError("필터 적용 중 오류", ex);
-                e.Accepted = true; // 오류 발생 시 모든 항목 표시
+                e.Accepted = true;
             }
         }
 
@@ -528,15 +464,11 @@ namespace DongNoti
                     e.Accepted = false;
                     return;
                 }
-
-                // Dday 타입만 필터링 (이미 Source에서 필터링했지만 안전을 위해, 모든 Dday 표시)
                 if (dday.AlarmType != AlarmType.Dday)
                 {
                     e.Accepted = false;
                     return;
                 }
-
-                // 검색 필터
                 if (SearchTextBox != null)
                 {
                     var searchText = SearchTextBox.Text?.Trim() ?? string.Empty;
@@ -549,27 +481,20 @@ namespace DongNoti
                         }
                     }
                 }
-
-                // 필터 ComboBox (DdayOnly만 허용)
                 if (FilterComboBox != null)
                 {
                     var filterItem = FilterComboBox.SelectedItem as ComboBoxItem;
                     var filterTag = filterItem?.Tag?.ToString() ?? "All";
-
                     if (filterTag == "AlarmOnly")
                     {
-                        // 알람만 필터는 Dday를 제외
                         e.Accepted = false;
                         return;
                     }
                 }
-
-                // 카테고리 필터
                 if (CategoryFilterComboBox != null)
                 {
                     var categoryFilterItem = CategoryFilterComboBox.SelectedItem as ComboBoxItem;
                     var categoryFilterTag = categoryFilterItem?.Tag?.ToString() ?? "All";
-                    
                     if (categoryFilterTag != "All")
                     {
                         var ddayCategory = dday.Category ?? "기본";
@@ -580,13 +505,12 @@ namespace DongNoti
                         }
                     }
                 }
-
                 e.Accepted = true;
             }
             catch (Exception ex)
             {
                 LogService.LogError("Dday 필터 적용 중 오류", ex);
-                e.Accepted = true; // 오류 발생 시 모든 항목 표시
+                e.Accepted = true;
             }
         }
 
@@ -615,13 +539,10 @@ namespace DongNoti
         {
             if (SearchTextBox != null)
             {
-                // 검색창이 비어있지 않으면 X 버튼 표시
                 ClearSearchButton.Visibility = string.IsNullOrWhiteSpace(SearchTextBox.Text) 
                     ? Visibility.Collapsed 
                     : Visibility.Visible;
             }
-
-            // 필터 새로고침
             _alarmsViewSource?.View?.Refresh();
             _ddaysViewSource?.View?.Refresh();
             UpdateStatus();
@@ -640,7 +561,6 @@ namespace DongNoti
         {
             try
             {
-                // 필터 새로고침 - 즉시 반영
                 if (_alarmsViewSource != null && _alarmsViewSource.View != null)
                 {
                     _alarmsViewSource.View.Refresh();
@@ -661,7 +581,6 @@ namespace DongNoti
         {
             try
             {
-                // 필터 새로고침 - 즉시 반영
                 if (_alarmsViewSource != null && _alarmsViewSource.View != null)
                 {
                     _alarmsViewSource.View.Refresh();
@@ -699,8 +618,6 @@ namespace DongNoti
 
                 if (_alarms == null)
                     _alarms = new List<Alarm>();
-
-                // 복제용 알람 생성 (새 Id, 나머지는 동일)
                 var clone = new Alarm
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -761,10 +678,8 @@ namespace DongNoti
                     _alarms.Add(dialog.Alarm);
                     SaveAlarms(); // 동기적으로 저장 (AlarmService도 자동으로 새로고침됨)
                     
-                    // UI 업데이트 (AlarmService에서 최신 데이터 가져옴)
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 즉시 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -796,7 +711,6 @@ namespace DongNoti
 
         private void DeleteAlarm_Click(object sender, RoutedEventArgs e)
         {
-            // 알람 또는 Dday 삭제
             Alarm? selectedAlarm = null;
             bool isDday = false;
             
@@ -821,7 +735,6 @@ namespace DongNoti
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // ID로 찾아서 삭제
                     var index = _alarms.FindIndex(a => a.Id == selectedAlarm.Id);
                     if (index >= 0)
                     {
@@ -829,7 +742,6 @@ namespace DongNoti
                     }
                     SaveAlarms(); // 동기적으로 저장 (AlarmService도 자동으로 새로고침됨)
                     
-                    // UI 업데이트 (AlarmService에서 최신 데이터 가져옴)
                     RefreshAlarmsList();
                     
                     LogService.LogInfo($"{itemType} 삭제 완료: '{selectedAlarm.Title}'");
@@ -843,7 +755,6 @@ namespace DongNoti
             {
                 e.Handled = true; // 이벤트 처리 완료 표시
                 
-                // 더블클릭한 위치의 행 찾기
                 var dataGrid = sender as DataGrid;
                 if (dataGrid == null) return;
 
@@ -886,27 +797,22 @@ namespace DongNoti
                     var dialog = new AlarmDialog(selectedAlarm);
                     if (dialog.ShowDialog() == true && dialog.Alarm != null)
                     {
-                        // ID로 찾기 (View에서 가져온 항목과 리스트의 항목이 다른 참조일 수 있음)
                         var index = _alarms.FindIndex(a => a.Id == selectedAlarm.Id);
                         if (index >= 0)
                         {
                             var updatedAlarm = dialog.Alarm;
                             
-                            // 알람 타입에 따라 처리
                             if (updatedAlarm.AlarmType == AlarmType.Alarm)
                             {
-                                // 알람 시간에 따라 LastTriggered 업데이트
                                 var now = DateTime.Now;
                                 var alarmMinute = new DateTime(updatedAlarm.DateTime.Year, updatedAlarm.DateTime.Month, updatedAlarm.DateTime.Day, 
                                                               updatedAlarm.DateTime.Hour, updatedAlarm.DateTime.Minute, 0);
                                 var nowMinute = TimeHelper.ToMinutePrecision(now);
                                 
-                                // 반복 없는 알람만 처리
                                 if (updatedAlarm.RepeatType == RepeatType.None)
                                 {
                                     if (alarmMinute >= nowMinute)
                                     {
-                                        // 미래 시간으로 수정 → LastTriggered 리셋
                                         if (updatedAlarm.LastTriggered != null)
                                         {
                                             updatedAlarm.LastTriggered = null;
@@ -915,7 +821,6 @@ namespace DongNoti
                                     }
                                     else
                                     {
-                                        // 과거 시간으로 수정 → LastTriggered 설정 (이미 울린 것으로 표시)
                                         if (updatedAlarm.LastTriggered == null)
                                         {
                                             updatedAlarm.LastTriggered = alarmMinute;
@@ -924,15 +829,12 @@ namespace DongNoti
                                     }
                                 }
                             }
-                            // Dday 타입은 LastTriggered 업데이트 불필요 (메모만 업데이트)
                             
                             _alarms[index] = updatedAlarm;
                             SaveAlarms(); // 동기적으로 저장 (AlarmService도 자동으로 새로고침됨)
                             
-                            // UI 업데이트 (AlarmService에서 최신 데이터 가져옴)
                             RefreshAlarmsList();
                             
-                            // DdayWindow도 즉시 새로고침
                             if (Application.Current is App app)
                             {
                                 var ddayWindow = app.GetDdayWindow();
@@ -961,7 +863,6 @@ namespace DongNoti
 
         private void AlarmToggle_Checked(object sender, RoutedEventArgs e)
         {
-            // 초기 로드 중에는 저장하지 않음
             if (_isInitialLoad || _isLoading)
                 return;
                 
@@ -974,7 +875,6 @@ namespace DongNoti
 
         private void AlarmToggle_Unchecked(object sender, RoutedEventArgs e)
         {
-            // 초기 로드 중에는 저장하지 않음
             if (_isInitialLoad || _isLoading)
                 return;
                 
@@ -987,12 +887,10 @@ namespace DongNoti
 
         private void DdaysDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // Dday 선택 시 Edit/Delete 버튼 활성화
             if (DdaysDataGrid.SelectedItem is Alarm)
             {
                 EditButton.IsEnabled = true;
                 DeleteButton.IsEnabled = true;
-                // 알람 DataGrid 선택 해제
                 if (AlarmsDataGrid != null)
                 {
                     AlarmsDataGrid.SelectedItem = null;
@@ -1000,7 +898,6 @@ namespace DongNoti
             }
             else
             {
-                // 알람 DataGrid에서도 선택이 없으면 버튼 비활성화
                 if (AlarmsDataGrid.SelectedItem == null)
                 {
                     EditButton.IsEnabled = false;
@@ -1073,12 +970,10 @@ namespace DongNoti
 
         private void AlarmsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // 알람 선택 시 Edit/Delete 버튼 활성화
             if (AlarmsDataGrid.SelectedItem is Alarm)
             {
                 EditButton.IsEnabled = true;
                 DeleteButton.IsEnabled = true;
-                // Dday 선택 해제
                 if (DdaysDataGrid != null)
                 {
                     DdaysDataGrid.SelectedItem = null;
@@ -1086,7 +981,6 @@ namespace DongNoti
             }
             else
             {
-                // Dday에서도 선택이 없으면 버튼 비활성화
                 if (DdaysDataGrid?.SelectedItem == null)
                 {
                     EditButton.IsEnabled = false;
@@ -1099,15 +993,12 @@ namespace DongNoti
         {
             try
             {
-                // 편집이 커밋될 때만 저장
                 if (e.EditAction == DataGridEditAction.Commit)
                 {
-                    // UI 업데이트를 위해 Dispatcher 사용 (낮은 우선순위로 변경)
                     Dispatcher.BeginInvoke(new Action(() =>
                     {
                         try
                         {
-                            // 편집된 알람의 시간에 따라 LastTriggered 업데이트
                             if (e.Row.Item is Alarm editedAlarm)
                             {
                                 var now = DateTime.Now;
@@ -1115,12 +1006,10 @@ namespace DongNoti
                                                               editedAlarm.DateTime.Hour, editedAlarm.DateTime.Minute, 0);
                                 var nowMinute = TimeHelper.ToMinutePrecision(now);
                                 
-                                // 반복 없는 알람만 처리
                                 if (editedAlarm.RepeatType == RepeatType.None)
                                 {
                                     if (alarmMinute >= nowMinute)
                                     {
-                                        // 미래 시간으로 수정 → LastTriggered 리셋
                                         if (editedAlarm.LastTriggered != null)
                                         {
                                             editedAlarm.LastTriggered = null;
@@ -1129,7 +1018,6 @@ namespace DongNoti
                                     }
                                     else
                                     {
-                                        // 과거 시간으로 수정 → LastTriggered 설정 (이미 울린 것으로 표시)
                                         if (editedAlarm.LastTriggered == null)
                                         {
                                             editedAlarm.LastTriggered = alarmMinute;
@@ -1139,7 +1027,6 @@ namespace DongNoti
                                 }
                             }
 
-                            // ItemsSource 재설정 없이 저장만 수행
                             if (_alarms == null)
                             {
                                 LogService.LogWarning("알람 목록이 null입니다. 빈 목록으로 초기화");
@@ -1152,7 +1039,6 @@ namespace DongNoti
                                 StorageService.SaveAlarms(_alarms);
                                 UpdateStatus();
                                 
-                                // AlarmService 새로고침 (백그라운드로)
                                 Dispatcher.BeginInvoke(new Action(() =>
                                 {
                                     if (Application.Current is App app)
@@ -1164,7 +1050,6 @@ namespace DongNoti
                                 _isSaving = false;
                                 LogService.LogInfo($"DataGrid 편집 후 알람 저장 완료");
                                 
-                                // UI 새로고침하여 색상 업데이트 (ItemsSource 재설정)
                                 var currentSelection = AlarmsDataGrid.SelectedItem;
                                 AlarmsDataGrid.ItemsSource = null;
                                 AlarmsDataGrid.ItemsSource = _alarms;
@@ -1204,7 +1089,6 @@ namespace DongNoti
             {
                 if (FocusModeService.Instance.IsFocusModeActive)
                 {
-                    // 이미 활성화되어 있으면 종료
                     var result = MessageBox.Show(
                         $"집중 모드를 종료하시겠습니까?\n\n남은 시간: {TimeHelper.FormatTimeSpan(FocusModeService.Instance.GetRemainingTime())}",
                         "집중 모드",
@@ -1218,7 +1102,6 @@ namespace DongNoti
                 }
                 else
                 {
-                    // 다이얼로그로 시간 선택
                     var dialog = new FocusModeDialog();
                     dialog.Owner = this;
                     
@@ -1323,7 +1206,6 @@ namespace DongNoti
             {
                 if (Application.Current is App app && DdayWindowToggleButton != null)
                 {
-                    // App에서 DdayWindow 상태 확인
                     var ddayWindow = app.GetDdayWindow();
                     bool isVisible = ddayWindow != null && ddayWindow.IsVisible;
                     DdayWindowToggleButton.Content = isVisible ? "Dday 창 끄기" : "Dday 창";
@@ -1339,16 +1221,13 @@ namespace DongNoti
         {
             try
             {
-                // Delete: 선택된 알람 또는 Dday 삭제
                 if (e.Key == System.Windows.Input.Key.Delete)
                 {
-                    // 셀 편집 중인지 확인 - 편집 중이면 Delete 키를 셀 내 텍스트 삭제로 전달
                     if (IsCellEditing(e.OriginalSource as DependencyObject))
                     {
                         return; // 편집 중이면 행 삭제 처리하지 않음 (텍스트 삭제로 동작)
                     }
 
-                    // AlarmsDataGrid 또는 DdaysDataGrid 중 하나라도 선택되어 있고 Delete 버튼이 활성화되어 있으면 삭제
                     if ((AlarmsDataGrid.SelectedItem != null || (DdaysDataGrid?.SelectedItem != null)) && DeleteButton.IsEnabled)
                     {
                         DeleteAlarm_Click(sender, e);
@@ -1371,7 +1250,6 @@ namespace DongNoti
             if (element == null)
                 return false;
 
-            // VisualTree를 타고 올라가며 DataGridCell을 찾음
             DependencyObject? current = element;
             while (current != null)
             {
@@ -1389,7 +1267,6 @@ namespace DongNoti
         {
             try
             {
-                // Ctrl+N: 새 항목 추가
                 if (e.Key == System.Windows.Input.Key.N && 
                     (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {
@@ -1398,7 +1275,6 @@ namespace DongNoti
                     return;
                 }
 
-                // Ctrl+F: 검색창 포커스
                 if (e.Key == System.Windows.Input.Key.F && 
                     (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 {
@@ -1407,7 +1283,6 @@ namespace DongNoti
                     return;
                 }
 
-                // Enter 또는 F2: 선택된 알람 편집
                 if (e.Key == System.Windows.Input.Key.Enter || e.Key == System.Windows.Input.Key.F2)
                 {
                     if (AlarmsDataGrid.SelectedItem != null && EditButton.IsEnabled)
@@ -1418,7 +1293,6 @@ namespace DongNoti
                     }
                 }
 
-                // Escape: 선택 해제
                 if (e.Key == System.Windows.Input.Key.Escape)
                 {
                     AlarmsDataGrid.SelectedItem = null;
@@ -1438,7 +1312,6 @@ namespace DongNoti
             {
                 if (sender is Button button && button.ContextMenu != null)
                 {
-                    // 개수 계산
                     var pastAlarms = _alarms.Where(a => 
                         a.AlarmType == AlarmType.Alarm && 
                         a.RepeatType == RepeatType.None && 
@@ -1457,10 +1330,8 @@ namespace DongNoti
                     var enabledAlarms = allAlarms.Where(a => a.IsEnabled).ToList();
                     var enabledDdays = allDdays.Where(a => a.IsEnabled).ToList();
                     
-                    // 메뉴 항목 업데이트
                     if (button.ContextMenu.Items.Count > 0)
                     {
-                        // 지난 알람 삭제
                         if (button.ContextMenu.Items[0] is MenuItem pastDeleteMenu && pastDeleteMenu.Items.Count >= 3)
                         {
                             ((MenuItem)pastDeleteMenu.Items[0]).Header = $"알람 삭제 ({pastAlarms.Count}개)";
@@ -1468,7 +1339,6 @@ namespace DongNoti
                             ((MenuItem)pastDeleteMenu.Items[2]).Header = $"알람 및 Dday 모두 삭제 ({pastAlarms.Count + pastDdays.Count}개)";
                         }
                         
-                        // 모두 삭제 (Separator 다음)
                         if (button.ContextMenu.Items.Count > 2 && button.ContextMenu.Items[2] is MenuItem deleteAllMenu && deleteAllMenu.Items.Count >= 3)
                         {
                             ((MenuItem)deleteAllMenu.Items[0]).Header = $"알람 삭제 ({allAlarms.Count}개)";
@@ -1476,7 +1346,6 @@ namespace DongNoti
                             ((MenuItem)deleteAllMenu.Items[2]).Header = $"알람 및 Dday 모두 삭제 ({allAlarms.Count + allDdays.Count}개)";
                         }
                         
-                        // 모두 활성화 (Separator 다음)
                         if (button.ContextMenu.Items.Count > 4 && button.ContextMenu.Items[4] is MenuItem enableAllMenu && enableAllMenu.Items.Count >= 3)
                         {
                             ((MenuItem)enableAllMenu.Items[0]).Header = $"알람 활성화 ({disabledAlarms.Count}개)";
@@ -1484,7 +1353,6 @@ namespace DongNoti
                             ((MenuItem)enableAllMenu.Items[2]).Header = $"알람 및 Dday 모두 활성화 ({disabledAlarms.Count + disabledDdays.Count}개)";
                         }
                         
-                        // 모두 비활성화 (Separator 다음)
                         if (button.ContextMenu.Items.Count > 6 && button.ContextMenu.Items[6] is MenuItem disableAllMenu && disableAllMenu.Items.Count >= 3)
                         {
                             ((MenuItem)disableAllMenu.Items[0]).Header = $"알람 비활성화 ({enabledAlarms.Count}개)";
@@ -1572,7 +1440,6 @@ namespace DongNoti
                     SaveAlarms();
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -1632,7 +1499,6 @@ namespace DongNoti
                     SaveAlarms();
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -1715,7 +1581,6 @@ namespace DongNoti
                     SaveAlarms();
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -1761,7 +1626,6 @@ namespace DongNoti
                     SaveAlarms();
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -1836,7 +1700,6 @@ namespace DongNoti
                     SaveAlarms();
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -1892,7 +1755,6 @@ namespace DongNoti
                     SaveAlarms();
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -1971,7 +1833,6 @@ namespace DongNoti
                     SaveAlarms();
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -2027,7 +1888,6 @@ namespace DongNoti
                     SaveAlarms();
                     RefreshAlarmsList();
                     
-                    // DdayWindow도 새로고침
                     if (Application.Current is App app)
                     {
                         var ddayWindow = app.GetDdayWindow();
@@ -2053,20 +1913,15 @@ namespace DongNoti
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // 설정을 다시 로드하여 최신 값을 확인
             var settings = StorageService.LoadSettings();
             if (settings.MinimizeToTray)
             {
-                // 트레이로 최소화하도록 설정되어 있으면 창을 닫지 않고 숨김
                 e.Cancel = true;
                 this.Hide();
             }
             else
             {
-                // MinimizeToTray가 false면 정상적으로 종료
-                // e.Cancel을 false로 설정하여 창이 닫히도록 함
                 e.Cancel = false;
-                // 앱 종료 (트레이 아이콘 정리 포함)
                 Application.Current.Shutdown();
             }
         }
