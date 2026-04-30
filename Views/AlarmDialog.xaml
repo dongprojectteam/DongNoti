@@ -1,311 +1,348 @@
 <Window x:Class="DongNoti.Views.AlarmDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:models="clr-namespace:DongNoti.Models"
-        Title="알람 설정" Height="630" Width="450"
+        Title="알람 설정"
+        Height="560"
+        Width="500"
+        MinHeight="500"
+        MinWidth="460"
         WindowStartupLocation="CenterOwner"
         Icon="/Resources/app.ico"
-        ResizeMode="NoResize">
+        ResizeMode="CanResizeWithGrip"
+        Background="#F4F6F8"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
     <Window.Resources>
-        <Style x:Key="ModernRaisedButton" TargetType="Button">
-            <Setter Property="Background" Value="#2196F3"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="BorderBrushSoft" Color="#DDE3EA"/>
+        <SolidColorBrush x:Key="TextMainBrush" Color="#1F2937"/>
+        <SolidColorBrush x:Key="TextSubtleBrush" Color="#667085"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#2F80ED"/>
+
+        <Style x:Key="SectionPanelStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="FieldLabelStyle" TargetType="Label">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSubtleBrush}"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderBrush" Value="#C9D2DD"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="ComboBox" BasedOn="{StaticResource ModernComboBoxStyle}">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMainBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemChrome"
+                                Background="Transparent"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemChrome" Property="Background" Value="#F0F6FF"/>
+                                <Setter Property="Foreground" Value="#1F6FD6"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemChrome" Property="Background" Value="#E7F0FF"/>
+                                <Setter Property="Foreground" Value="#185ABC"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#98A2B3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="DatePicker">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMainBrush}"/>
+        </Style>
+
+        <Style x:Key="DayChipCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMainBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Chip"
+                                Width="34"
+                                Height="28"
+                                Background="#F3F6FA"
+                                BorderBrush="#DDE3EA"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="#F0F6FF"/>
+                                <Setter TargetName="Chip" Property="BorderBrush" Value="#B7D4FF"/>
+                                <Setter Property="Foreground" Value="#1F6FD6"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="#1F2937"/>
+                                <Setter TargetName="Chip" Property="BorderBrush" Value="#1F2937"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chip" Property="Background" Value="#EEF2F6"/>
+                                <Setter TargetName="Chip" Property="BorderBrush" Value="#E5EAF0"/>
+                                <Setter Property="Foreground" Value="#98A2B3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="MinWidth" Value="72"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MinHeight" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                CornerRadius="4" 
-                                Padding="{TemplateBinding Padding}">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#40000000" Direction="270" ShadowDepth="2" BlurRadius="4" Opacity="0.3"/>
-                            </Border.Effect>
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1976D2"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#1565C0"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        
-        <Style x:Key="ModernOutlinedButton" TargetType="Button" BasedOn="{StaticResource ModernRaisedButton}">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#2196F3"/>
-            <Setter Property="BorderBrush" Value="#2196F3"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
+                        <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4" 
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1F6FD6"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#185ABC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#2F80ED"/>
+            <Setter Property="BorderBrush" Value="#B7D4FF"/>
+            <Setter Property="FontWeight" Value="Normal"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#E3F2FD"/>
-                    <Setter Property="BorderBrush" Value="#1976D2"/>
+                    <Setter Property="Background" Value="#F0F6FF"/>
+                    <Setter Property="BorderBrush" Value="#82B8FF"/>
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#BBDEFB"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        
-        <Style x:Key="ModernTextButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#2196F3"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MinHeight" Value="0"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#E3F2FD"/>
+                    <Setter Property="Background" Value="#DCEBFF"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
-        <!-- 슬림한 스크롤바 스타일 -->
-        <Style TargetType="{x:Type ScrollBar}">
-            <Setter Property="Width" Value="8"/>
-            <Setter Property="MinWidth" Value="8"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ScrollBar}">
-                        <Grid>
-                            <Border Background="#F5F5F5" CornerRadius="4"/>
-                            <Track x:Name="PART_Track" IsDirectionReversed="True">
-                                <Track.Thumb>
-                                    <Thumb>
-                                        <Thumb.Style>
-                                            <Style TargetType="Thumb">
-                                                <Setter Property="Background" Value="#BDBDBD"/>
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="Thumb">
-                                                            <Border Background="{TemplateBinding Background}" 
-                                                                    CornerRadius="4"
-                                                                    Width="6"
-                                                                    Margin="1,0"/>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                                <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="#9E9E9E"/>
-                                                    </Trigger>
-                                                    <Trigger Property="IsDragging" Value="True">
-                                                        <Setter Property="Background" Value="#757575"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Thumb.Style>
-                                    </Thumb>
-                                </Track.Thumb>
-                            </Track>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <Style x:Key="SmallButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinWidth" Value="36"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="FontSize" Value="11"/>
         </Style>
     </Window.Resources>
-    
-    <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Padding="20" Margin="0">
-        <Border.Effect>
-            <DropShadowEffect Color="#20000000" Direction="270" ShadowDepth="2" BlurRadius="8" Opacity="0.15"/>
-        </Border.Effect>
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            
-            <ScrollViewer Grid.Row="0" 
-                          VerticalScrollBarVisibility="Auto"
-                          Padding="0,0,8,0"
-                          CanContentScroll="False">
-                <StackPanel Margin="0,0,8,0">
-                    <!-- 타입 선택 -->
-                    <Grid Margin="0,0,0,15">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Label Content="타입:" 
-                               Grid.Column="0"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"/>
-                        <ComboBox x:Name="TypeComboBox" 
-                                  Grid.Column="1"
-                                  SelectedIndex="0"
-                                  SelectionChanged="TypeComboBox_SelectionChanged"
-                                  Padding="8,6">
-                            <ComboBoxItem Content="알람" Tag="Alarm"/>
-                            <ComboBoxItem Content="Dday" Tag="Dday"/>
-                        </ComboBox>
-                    </Grid>
 
-                    <!-- 제목 -->
-                    <Grid Margin="0,0,0,15">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Label Content="제목:" 
-                               Grid.Column="0"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"/>
-                        <TextBox x:Name="TitleTextBox" 
-                                 Grid.Column="1"
-                                 Text="알람"
-                                 Padding="8,6"
-                                 BorderBrush="#BDBDBD"
-                                 BorderThickness="1"/>
-                    </Grid>
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-                    <!-- 날짜 -->
-                    <Grid Margin="0,0,0,15">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Label Content="날짜:" 
-                               Grid.Column="0"
-                               VerticalAlignment="Center"
-                               Margin="0,0,10,0"/>
-                        <DatePicker x:Name="DatePicker" 
-                                    Grid.Column="1"
-                                    Margin="0,0,10,0"/>
-                        <Button Grid.Column="2"
-                                Content="&lt;"
-                                Width="30"
-                                Height="25"
-                                Padding="0,2"
-                                Margin="0,0,5,0"
-                                Click="DateDecrease_Click"
-                                ToolTip="하루 전"
-                                Style="{StaticResource ModernOutlinedButton}"/>
-                        <Button Grid.Column="3"
-                                Content="오늘"
-                                Height="25"
-                                Padding="8,2"
-                                Margin="0,0,5,0"
-                                Click="DateToday_Click"
-                                ToolTip="오늘 날짜"
-                                Style="{StaticResource ModernOutlinedButton}"/>
-                        <Button Grid.Column="4"
-                                Content="내일"
-                                Height="25"
-                                Padding="8,2"
-                                Margin="0,0,5,0"
-                                Click="DateTomorrow_Click"
-                                ToolTip="내일 날짜"
-                                Style="{StaticResource ModernOutlinedButton}"/>
-                        <Button Grid.Column="5"
-                                Content="&gt;"
-                                Width="30"
-                                Height="25"
-                                Padding="0,2"
-                                Click="DateIncrease_Click"
-                                ToolTip="하루 후"
-                                Style="{StaticResource ModernOutlinedButton}"/>
-                    </Grid>
+        <Border Grid.Row="0"
+                Background="#1F2937"
+                CornerRadius="6"
+                Padding="14,10">
+            <StackPanel>
+                <TextBlock Text="알람 / D-Day"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="White"/>
+                <TextBlock Text="필요한 값만 빠르게 조정합니다."
+                           FontSize="11"
+                           Foreground="#D1D9E6"
+                           Margin="0,2,0,0"/>
+            </StackPanel>
+        </Border>
 
-                    <!-- 시간 (Alarm 타입일 때만 표시) -->
-                    <StackPanel x:Name="TimePanel" Margin="0,0,0,15">
-                        <Label Content="시간:" Margin="0,0,0,5"/>
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      Padding="0,10,4,0"
+                      CanContentScroll="False">
+            <StackPanel>
+                <Border Style="{StaticResource SectionPanelStyle}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="116"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <Label Content="종류" Style="{StaticResource FieldLabelStyle}"/>
+                                <ComboBox x:Name="TypeComboBox"
+                                          SelectedIndex="0"
+                                          SelectionChanged="TypeComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="알람" Tag="Alarm"/>
+                                    <ComboBoxItem Content="Dday" Tag="Dday"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <Label Content="제목" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox x:Name="TitleTextBox" Text="알람"/>
+                            </StackPanel>
+                        </Grid>
+
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            
-                            <!-- 시간 선택 -->
-                            <ComboBox x:Name="HourComboBox" 
-                                      Grid.Column="0" 
-                                      Margin="0,0,3,0"
-                                      Padding="5,4"
-                                      MinWidth="50"
-                                      FontSize="12"/>
-                            <TextBlock Grid.Column="1" 
-                                       Text=":" 
-                                       VerticalAlignment="Center" 
-                                       HorizontalAlignment="Center" 
-                                       Margin="2,0"
-                                       FontSize="14"
-                                       FontWeight="Bold"/>
-                            <ComboBox x:Name="MinuteComboBox" 
-                                      Grid.Column="2" 
-                                      Margin="3,0,10,0"
-                                      Padding="5,4"
-                                      MinWidth="50"
-                                      FontSize="12"/>
-                            
-                            <!-- 빠른 시간 입력 -->
-                            <TextBlock Grid.Column="4"
-                                       Text="빠른 입력:" 
-                                       VerticalAlignment="Center" 
-                                       Margin="0,0,6,0"
-                                       FontSize="12"
-                                       Foreground="Gray"
-                                       HorizontalAlignment="Right"/>
-                            <TextBox x:Name="QuickTimeTextBox" 
-                                     Grid.Column="5"
-                                     Width="65"
-                                     Padding="5,4"
-                                     FontSize="12"
-                                     BorderBrush="#BDBDBD"
-                                     BorderThickness="1"
-                                     ToolTip="HH:mm 형식 (예: 15:30)"
-                                     KeyDown="QuickTimeTextBox_KeyDown"
-                                     VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="6"
-                                       Text="(HH:mm)" 
-                                       VerticalAlignment="Center" 
-                                       Margin="4,0,0,0"
-                                       FontSize="11"
-                                       Foreground="LightGray"/>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <Label Content="날짜" Style="{StaticResource FieldLabelStyle}"/>
+                                <DatePicker x:Name="DatePicker"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Content="‹"
+                                    Width="30"
+                                    Margin="0,20,5,0"
+                                    Click="DateDecrease_Click"
+                                    ToolTip="하루 전"
+                                    Style="{StaticResource SmallButtonStyle}"/>
+                            <Button Grid.Column="2"
+                                    Content="오늘"
+                                    Margin="0,20,5,0"
+                                    Click="DateToday_Click"
+                                    ToolTip="오늘 날짜"
+                                    Style="{StaticResource SmallButtonStyle}"/>
+                            <Button Grid.Column="3"
+                                    Content="내일"
+                                    Margin="0,20,5,0"
+                                    Click="DateTomorrow_Click"
+                                    ToolTip="내일 날짜"
+                                    Style="{StaticResource SmallButtonStyle}"/>
+                            <Button Grid.Column="4"
+                                    Content="›"
+                                    Width="30"
+                                    Margin="0,20,0,0"
+                                    Click="DateIncrease_Click"
+                                    ToolTip="하루 뒤"
+                                    Style="{StaticResource SmallButtonStyle}"/>
                         </Grid>
                     </StackPanel>
+                </Border>
 
-                    <!-- 반복, 카테고리, 우선순위를 3열로 배치 -->
-                    <Grid Margin="0,0,0,15">
+                <Border x:Name="TimePanel" Style="{StaticResource SectionPanelStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <Label Content="시" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="HourComboBox" MinWidth="58"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Text=":"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Bottom"
+                                   Margin="6,0"/>
+                        <StackPanel Grid.Column="2">
+                            <Label Content="분" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="MinuteComboBox" MinWidth="58"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <Label Content="빠른 입력" Style="{StaticResource FieldLabelStyle}"/>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right"
+                                           Text="HH:mm"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSubtleBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,0,0"/>
+                                <TextBox x:Name="QuickTimeTextBox"
+                                         Width="82"
+                                         ToolTip="HH:mm 형식 (예: 15:30)"
+                                         KeyDown="QuickTimeTextBox_KeyDown"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource SectionPanelStyle}">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="10"/>
@@ -313,15 +350,12 @@
                             <ColumnDefinition Width="10"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        
-                        <!-- 반복 설정 (Alarm 타입일 때만 표시) -->
+
                         <StackPanel x:Name="RepeatPanel" Grid.Column="0">
-                            <Label Content="반복:" Margin="0,0,0,5"/>
-                            <ComboBox x:Name="RepeatComboBox" 
-                                      Margin="0,0,0,0" 
-                                      SelectedIndex="0" 
-                                      SelectionChanged="RepeatComboBox_SelectionChanged"
-                                      Padding="8,6">
+                            <Label Content="반복" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="RepeatComboBox"
+                                      SelectedIndex="0"
+                                      SelectionChanged="RepeatComboBox_SelectionChanged">
                                 <ComboBoxItem Content="없음" Tag="None"/>
                                 <ComboBoxItem Content="매일" Tag="Daily"/>
                                 <ComboBoxItem Content="매주" Tag="Weekly"/>
@@ -330,22 +364,16 @@
                             </ComboBox>
                         </StackPanel>
 
-                        <!-- 카테고리 -->
                         <StackPanel Grid.Column="2">
-                            <Label Content="카테고리:" Margin="0,0,0,5"/>
-                            <ComboBox x:Name="CategoryComboBox" 
-                                      Margin="0,0,0,0" 
-                                      Padding="8,6">
+                            <Label Content="카테고리" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="CategoryComboBox">
                                 <ComboBoxItem Content="기본" Tag="기본" IsSelected="True"/>
                             </ComboBox>
                         </StackPanel>
 
-                        <!-- 우선순위 -->
                         <StackPanel Grid.Column="4">
-                            <Label Content="우선순위:" Margin="0,0,0,5"/>
-                            <ComboBox x:Name="PriorityComboBox" 
-                                      Margin="0,0,0,0" 
-                                      Padding="8,6">
+                            <Label Content="우선순위" Style="{StaticResource FieldLabelStyle}"/>
+                            <ComboBox x:Name="PriorityComboBox">
                                 <ComboBoxItem Content="낮음" Tag="Low"/>
                                 <ComboBoxItem Content="보통" Tag="Normal" IsSelected="True"/>
                                 <ComboBoxItem Content="높음" Tag="High"/>
@@ -353,117 +381,119 @@
                             </ComboBox>
                         </StackPanel>
                     </Grid>
+                </Border>
 
-                    <!-- 요일 선택 (매주 선택 시 표시) - 전체 너비 -->
-                    <StackPanel x:Name="DaysOfWeekPanel" Visibility="Collapsed" Margin="0,0,0,15">
-                        <Label Content="요일 선택:" Margin="0,0,0,5"/>
+                <Border x:Name="DaysOfWeekPanel"
+                        Style="{StaticResource SectionPanelStyle}"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <Label Content="요일 선택" Style="{StaticResource FieldLabelStyle}"/>
                         <UniformGrid Columns="7">
-                            <CheckBox x:Name="MondayCheckBox" Content="월" Margin="3" HorizontalAlignment="Center"/>
-                            <CheckBox x:Name="TuesdayCheckBox" Content="화" Margin="3" HorizontalAlignment="Center"/>
-                            <CheckBox x:Name="WednesdayCheckBox" Content="수" Margin="3" HorizontalAlignment="Center"/>
-                            <CheckBox x:Name="ThursdayCheckBox" Content="목" Margin="3" HorizontalAlignment="Center"/>
-                            <CheckBox x:Name="FridayCheckBox" Content="금" Margin="3" HorizontalAlignment="Center"/>
-                            <CheckBox x:Name="SaturdayCheckBox" Content="토" Margin="3" HorizontalAlignment="Center"/>
-                            <CheckBox x:Name="SundayCheckBox" Content="일" Margin="3" HorizontalAlignment="Center"/>
+                            <CheckBox x:Name="MondayCheckBox" Content="월" Style="{StaticResource DayChipCheckBoxStyle}"/>
+                            <CheckBox x:Name="TuesdayCheckBox" Content="화" Style="{StaticResource DayChipCheckBoxStyle}"/>
+                            <CheckBox x:Name="WednesdayCheckBox" Content="수" Style="{StaticResource DayChipCheckBoxStyle}"/>
+                            <CheckBox x:Name="ThursdayCheckBox" Content="목" Style="{StaticResource DayChipCheckBoxStyle}"/>
+                            <CheckBox x:Name="FridayCheckBox" Content="금" Style="{StaticResource DayChipCheckBoxStyle}"/>
+                            <CheckBox x:Name="SaturdayCheckBox" Content="토" Style="{StaticResource DayChipCheckBoxStyle}"/>
+                            <CheckBox x:Name="SundayCheckBox" Content="일" Style="{StaticResource DayChipCheckBoxStyle}"/>
                         </UniformGrid>
                     </StackPanel>
+                </Border>
 
-                    <!-- 사운드 파일 (Alarm 타입일 때만 표시) -->
-                    <StackPanel x:Name="SoundPanel" Margin="0,0,0,15">
-                        <Label Content="사운드 파일 (선택사항):" Margin="0,0,0,5"/>
-                        <Grid Margin="0,0,0,15">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="SoundFilePathTextBox" 
-                                     Grid.Column="0" 
-                                     IsReadOnly="True" 
-                                     Margin="0,0,5,0"
-                                     Padding="8,6"
-                                     BorderBrush="#BDBDBD"
-                                     BorderThickness="1"/>
-                            <Button Grid.Column="1" 
-                                    Content="찾기..." 
-                                    Click="BrowseSoundFile_Click" 
-                                    Style="{StaticResource ModernOutlinedButton}"/>
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
-                            <Button Content="기본 사운드 사용" 
-                                    Click="UseDefaultSound_Click" 
-                                    Margin="0,0,8,0"
-                                    Style="{StaticResource ModernTextButton}"/>
-                            <Button Content="🔊 테스트" 
-                                    Click="TestSound_Click" 
-                                    Style="{StaticResource ModernOutlinedButton}"
-                                    Padding="8,4"
-                                    FontSize="12"
-                                    ToolTip="현재 설정된 사운드를 테스트합니다 (3초 재생)"/>
+                <Border x:Name="SoundPanel" Style="{StaticResource SectionPanelStyle}">
+                    <StackPanel>
+                        <Label Content="사운드 파일" Style="{StaticResource FieldLabelStyle}"/>
+                        <DockPanel Margin="0,0,0,8">
+                            <Button DockPanel.Dock="Right"
+                                    Content="찾기"
+                                    Click="BrowseSoundFile_Click"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Margin="6,0,0,0"/>
+                            <TextBox x:Name="SoundFilePathTextBox"
+                                     IsReadOnly="True"/>
+                        </DockPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="기본 사운드"
+                                    Click="UseDefaultSound_Click"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Margin="0,0,8,0"/>
+                            <Button Content="테스트"
+                                    Click="TestSound_Click"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    ToolTip="현재 설정한 사운드를 3초 재생합니다."/>
                         </StackPanel>
                     </StackPanel>
+                </Border>
 
-                    <!-- 자동 종료 시간 (Alarm 타입일 때만 표시) -->
-                    <StackPanel x:Name="AutoDismissPanel" Margin="0,0,0,15">
-                        <Label Content="자동 종료 시간 (분):" Margin="0,0,0,5"/>
-                        <Grid Margin="0,0,0,5">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="AutoDismissMinutesTextBox" 
-                                     Text="1" 
-                                     Margin="0,0,5,0"
-                                     PreviewTextInput="AutoDismissMinutesTextBox_PreviewTextInput"
-                                     Padding="8,6"
-                                     BorderBrush="#BDBDBD"
-                                     BorderThickness="1"/>
-                            <TextBlock Grid.Column="1" 
-                                       Text="분 후 자동으로 닫기" 
-                                       VerticalAlignment="Center" 
-                                       Margin="5,0,0,0"
-                                       Foreground="Gray"/>
-                        </Grid>
-                        <TextBlock Text="* 0분 입력 시 자동 종료 안 함 (수동으로만 닫기)" 
-                                   FontSize="10"
-                                   Foreground="Gray"
-                                   Margin="0,0,0,0"/>
-                    </StackPanel>
+                <Border x:Name="AutoDismissPanel" Style="{StaticResource SectionPanelStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="138"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <Label Content="자동 종료" Style="{StaticResource FieldLabelStyle}"/>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right"
+                                           Text="분"
+                                           FontSize="12"
+                                           Foreground="{StaticResource TextSubtleBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="6,0,0,0"/>
+                                <TextBox x:Name="AutoDismissMinutesTextBox"
+                                         Text="1"
+                                         PreviewTextInput="AutoDismissMinutesTextBox_PreviewTextInput"/>
+                            </DockPanel>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Text="0분이면 자동 종료하지 않습니다."
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSubtleBrush}"
+                                   VerticalAlignment="Bottom"
+                                   Margin="12,0,0,4"/>
+                    </Grid>
+                </Border>
 
-                    <!-- 메모 (Dday 타입일 때만 표시) -->
-                    <StackPanel x:Name="MemoPanel" Margin="0,0,0,15" Visibility="Collapsed">
-                        <Label Content="메모:" Margin="0,0,0,5"/>
-                        <TextBox x:Name="MemoTextBox" 
+                <Border x:Name="AutoDdayPanel" Style="{StaticResource SectionPanelStyle}">
+                    <CheckBox x:Name="AutoRegisterAsDdayCheckBox"
+                              Content="다음 알람을 Dday로 자동 등록"
+                              IsChecked="False"
+                              ToolTip="알람이 울릴 때 다음 알람 날짜를 자동으로 Dday로 등록합니다."/>
+                </Border>
+
+                <Border x:Name="MemoPanel"
+                        Style="{StaticResource SectionPanelStyle}"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <Label Content="메모" Style="{StaticResource FieldLabelStyle}"/>
+                        <TextBox x:Name="MemoTextBox"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
-                                 MinHeight="240"
-                                 MaxHeight="240"
+                                 MinHeight="120"
+                                 MaxHeight="160"
                                  VerticalScrollBarVisibility="Auto"
-                                 Padding="8,6"
-                                 BorderBrush="#BDBDBD"
-                                 BorderThickness="1"
-                                 FontSize="12"/>
+                                 VerticalContentAlignment="Top"/>
                     </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
-
-            <!-- 버튼 -->
-            <StackPanel Grid.Row="1" 
-                        Orientation="Horizontal" 
-                        HorizontalAlignment="Right" 
-                        Margin="0,20,0,0">
-                <Button Content="확인" 
-                        Click="OK_Click" 
-                        Margin="5,0" 
-                        IsDefault="True"
-                        Style="{StaticResource ModernRaisedButton}"
-                        MinWidth="65" MinHeight="30"/>
-                <Button Content="취소" 
-                        Click="Cancel_Click" 
-                        Margin="5,0" 
-                        IsCancel="True"
-                        Style="{StaticResource ModernOutlinedButton}"
-                        MinWidth="65" MinHeight="30"/>
+                </Border>
             </StackPanel>
-        </Grid>
-    </Border>
+        </ScrollViewer>
+
+        <Border Grid.Row="2"
+                BorderBrush="{StaticResource BorderBrushSoft}"
+                BorderThickness="0,1,0,0"
+                Padding="0,10,0,0"
+                Margin="0,10,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="확인"
+                        Click="OK_Click"
+                        IsDefault="True"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Margin="0,0,8,0"/>
+                <Button Content="취소"
+                        Click="Cancel_Click"
+                        IsCancel="True"
+                        Style="{StaticResource SecondaryButtonStyle}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
 </Window>

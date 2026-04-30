@@ -28,6 +28,7 @@ namespace DongNoti.Services
         private static readonly List<string> _logBuffer = new List<string>();
         private static Timer? _flushTimer;
         private static readonly int FlushIntervalMinutes = 60;
+        private const int MaxBufferedLogEntries = 5000;
         private static Action<string>? _uiLogCallback;
 
         static LogService()
@@ -123,6 +124,10 @@ namespace DongNoti.Services
                 {
                     var logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{level}] {message}";
                     _logBuffer.Add(logEntry);
+                    if (_logBuffer.Count > MaxBufferedLogEntries)
+                    {
+                        _logBuffer.RemoveRange(0, _logBuffer.Count - MaxBufferedLogEntries);
+                    }
                     if (_uiLogCallback != null)
                     {
                         try

@@ -4,6 +4,170 @@
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
         <ResourceDictionary>
+            <SolidColorBrush x:Key="ComboSurfaceBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="ComboSurfaceHoverBrush" Color="#F7FAFF"/>
+            <SolidColorBrush x:Key="ComboSurfaceOpenBrush" Color="#F0F6FF"/>
+            <SolidColorBrush x:Key="ComboBorderBrush" Color="#C9D2DD"/>
+            <SolidColorBrush x:Key="ComboBorderHoverBrush" Color="#82B8FF"/>
+            <SolidColorBrush x:Key="ComboTextBrush" Color="#1F2937"/>
+            <SolidColorBrush x:Key="ComboMutedTextBrush" Color="#667085"/>
+            <SolidColorBrush x:Key="ComboDisabledBrush" Color="#EEF2F6"/>
+
+            <Style x:Key="ModernComboBoxStyle" TargetType="{x:Type ComboBox}">
+                <Setter Property="MinHeight" Value="30"/>
+                <Setter Property="Padding" Value="9,4"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="{StaticResource ComboTextBrush}"/>
+                <Setter Property="Background" Value="{StaticResource ComboSurfaceBrush}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource ComboBorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+                <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+                <Setter Property="MaxDropDownHeight" Value="260"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ComboBox}">
+                            <Grid SnapsToDevicePixels="True">
+                                <ToggleButton x:Name="ToggleButton"
+                                              Focusable="False"
+                                              ClickMode="Press"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                            <Border x:Name="Chrome"
+                                                    Background="{Binding Background, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                                    BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                                    BorderThickness="{Binding BorderThickness, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                                    CornerRadius="6">
+                                                <Grid>
+                                                    <Path x:Name="Arrow"
+                                                          Width="8"
+                                                          Height="5"
+                                                          HorizontalAlignment="Right"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,10,0"
+                                                          Fill="{StaticResource ComboMutedTextBrush}"
+                                                          Stretch="Fill"
+                                                          Data="M 0 0 L 4 5 L 8 0 Z"/>
+                                                </Grid>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ComboSurfaceHoverBrush}"/>
+                                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ComboBorderHoverBrush}"/>
+                                                    <Setter TargetName="Arrow" Property="Fill" Value="#2F80ED"/>
+                                                </Trigger>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ComboSurfaceOpenBrush}"/>
+                                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource ComboBorderHoverBrush}"/>
+                                                    <Setter TargetName="Arrow" Property="Fill" Value="#1F6FD6"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ComboDisabledBrush}"/>
+                                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="#DDE3EA"/>
+                                                    <Setter TargetName="Arrow" Property="Fill" Value="#98A2B3"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+
+                                <ContentPresenter x:Name="ContentSite"
+                                                  IsHitTestVisible="False"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                  Margin="9,0,28,0"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  RecognizesAccessKey="True"/>
+
+                                <Popup x:Name="PART_Popup"
+                                       Placement="Bottom"
+                                       AllowsTransparency="True"
+                                       Focusable="False"
+                                       IsOpen="{TemplateBinding IsDropDownOpen}"
+                                       PopupAnimation="Fade">
+                                    <Border x:Name="DropDownBorder"
+                                            MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                            MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                            Background="{StaticResource ComboSurfaceBrush}"
+                                            BorderBrush="#B7C6D8"
+                                            BorderThickness="1"
+                                            CornerRadius="7"
+                                            Padding="4">
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="#33000000"
+                                                              BlurRadius="12"
+                                                              ShadowDepth="3"
+                                                              Opacity="0.22"/>
+                                        </Border.Effect>
+                                        <ScrollViewer CanContentScroll="True"
+                                                      SnapsToDevicePixels="True">
+                                            <StackPanel IsItemsHost="True"
+                                                        KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="HasItems" Value="False">
+                                    <Setter TargetName="DropDownBorder" Property="MinHeight" Value="36"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Foreground" Value="#98A2B3"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="ModernComboBoxItemStyle" TargetType="{x:Type ComboBoxItem}">
+                <Setter Property="MinHeight" Value="28"/>
+                <Setter Property="Padding" Value="9,5"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="{StaticResource ComboTextBrush}"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                            <Border x:Name="ItemChrome"
+                                    Background="Transparent"
+                                    CornerRadius="5"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  RecognizesAccessKey="True"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsHighlighted" Value="True">
+                                    <Setter TargetName="ItemChrome" Property="Background" Value="#F0F6FF"/>
+                                    <Setter Property="Foreground" Value="#1F6FD6"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="ItemChrome" Property="Background" Value="#E7F0FF"/>
+                                    <Setter Property="Foreground" Value="#185ABC"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Foreground" Value="#98A2B3"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="{x:Type ComboBox}" BasedOn="{StaticResource ModernComboBoxStyle}"/>
+            <Style TargetType="{x:Type ComboBoxItem}" BasedOn="{StaticResource ModernComboBoxItemStyle}"/>
+
             <ResourceDictionary.MergedDictionaries>
                 <!-- 커스텀 스타일은 각 윈도우에서 정의 -->
             </ResourceDictionary.MergedDictionaries>

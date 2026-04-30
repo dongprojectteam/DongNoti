@@ -127,30 +127,26 @@ namespace DongNoti.Views
                     SoundFilePath = _alarm.SoundFilePath,
                     IsTemporary = true
                 };
-                var alarms = StorageService.LoadAlarms();
-                var originalAlarm = alarms.FirstOrDefault(a => a.Id == _alarm.Id);
+                if (Application.Current is App app && app.AlarmService != null)
+                {
+                    app.AlarmService.SnoozeAlarm(_alarm.Id, _alarm.LastTriggered.Value, snoozeAlarm);
+                }
+                var originalAlarm = _alarm;
                 if (originalAlarm != null)
                 {
                     originalAlarm.LastTriggered = _alarm.LastTriggered;
                     LogService.LogInfo($"원래 알람 '{originalAlarm.Title}' LastTriggered 업데이트: {_alarm.LastTriggered:yyyy-MM-dd HH:mm}");
                 }
-                alarms.Add(snoozeAlarm);
-                StorageService.SaveAlarms(alarms);
 
                 LogService.LogInfo($"5분 후 다시 알림 설정: '{snoozeAlarm.Title}' at {snoozeAlarm.DateTime:yyyy-MM-dd HH:mm}");
                 try
                 {
-                    if (Application.Current is App app)
+                    if (Application.Current is App messageApp)
                     {
-                        app.RefreshAlarms(refreshMainWindow: false);
-                        app.Dispatcher.BeginInvoke(() =>
+                        messageApp.Dispatcher.BeginInvoke(() =>
                         {
                             try
                             {
-                                if (app.MainWindow is MainWindow mainWindow)
-                                {
-                                    mainWindow.RefreshAlarmsList();
-                                }
                                 MessageBox.Show("5분 후 다시 알림이 설정되었습니다.", "알림", MessageBoxButton.OK, MessageBoxImage.Information);
                             }
                             catch (Exception refreshEx)
@@ -185,38 +181,10 @@ namespace DongNoti.Views
                 {
                     var now = DateTime.Now;
                     _alarm.LastTriggered = now;
-                    var alarms = StorageService.LoadAlarms();
-                    var originalAlarm = alarms.FirstOrDefault(a => a.Id == _alarm.Id);
-                    if (originalAlarm != null)
+                    if (Application.Current is App app && app.AlarmService != null)
                     {
-                        originalAlarm.LastTriggered = now;
-                        StorageService.SaveAlarms(alarms);
+                        app.AlarmService.SetLastTriggered(_alarm.Id, now);
                         LogService.LogInfo($"알람 '{_alarm.Title}' LastTriggered 설정: {now:yyyy-MM-dd HH:mm}");
-                        try
-                        {
-                            if (Application.Current is App app)
-                            {
-                                app.RefreshAlarms(refreshMainWindow: false);
-                                app.Dispatcher.BeginInvoke(() =>
-                                {
-                                    try
-                                    {
-                                        if (app.MainWindow is MainWindow mainWindow)
-                                        {
-                                            mainWindow.RefreshAlarmsList();
-                                        }
-                                    }
-                                    catch (Exception refreshEx)
-                                    {
-                                        LogService.LogError("MainWindow 알람 목록 새로고침 중 오류", refreshEx);
-                                    }
-                                }, System.Windows.Threading.DispatcherPriority.Background);
-                            }
-                        }
-                        catch (Exception refreshEx)
-                        {
-                            LogService.LogError("MainWindow UI 업데이트 중 오류", refreshEx);
-                        }
                     }
                 }
                 

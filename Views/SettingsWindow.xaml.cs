@@ -50,6 +50,28 @@ namespace DongNoti.Views
             Loaded += SettingsWindow_Loaded;
         }
 
+        private static List<Alarm> GetCurrentAlarms()
+        {
+            if (Application.Current is App app && app.AlarmService != null)
+            {
+                return app.AlarmService.GetAlarms();
+            }
+
+            return StorageService.LoadAlarms();
+        }
+
+        private static void ReplaceCurrentAlarms(List<Alarm> alarms)
+        {
+            if (Application.Current is App app && app.AlarmService != null)
+            {
+                app.AlarmService.ReplaceAlarms(alarms);
+            }
+            else
+            {
+                StorageService.SaveAlarms(alarms);
+            }
+        }
+
         private void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
         {
             UpdateLogBufferCount();
@@ -175,7 +197,7 @@ namespace DongNoti.Views
                     var removedCategories = currentCategories.Where(c => c != "기본" && !defaultCategories.Contains(c)).ToList();
                     if (removedCategories.Count > 0)
                     {
-                        var alarms = StorageService.LoadAlarms();
+                        var alarms = GetCurrentAlarms();
                         bool hasChanges = false;
                         foreach (var alarm in alarms)
                         {
@@ -187,11 +209,7 @@ namespace DongNoti.Views
                         }
                         if (hasChanges)
                         {
-                            StorageService.SaveAlarms(alarms);
-                            if (Application.Current is App app)
-                            {
-                                app.RefreshAlarms(refreshMainWindow: true);
-                            }
+                            ReplaceCurrentAlarms(alarms);
                         }
                     }
                     _settings.AlarmCategories = defaultCategories;
@@ -262,7 +280,7 @@ namespace DongNoti.Views
                         _settings.AlarmCategories = categories;
                         _settings.CategoryColors?.Remove(category);
                         StorageService.SaveSettings(_settings);
-                        var alarms = StorageService.LoadAlarms();
+                        var alarms = GetCurrentAlarms();
                         bool hasChanges = false;
                         foreach (var alarm in alarms)
                         {
@@ -274,11 +292,7 @@ namespace DongNoti.Views
                         }
                         if (hasChanges)
                         {
-                            StorageService.SaveAlarms(alarms);
-                            if (Application.Current is App app)
-                            {
-                                app.RefreshAlarms(refreshMainWindow: true);
-                            }
+                            ReplaceCurrentAlarms(alarms);
                         }
                         
                         LoadCategories();
@@ -692,7 +706,7 @@ namespace DongNoti.Views
         {
             try
             {
-                var alarms = StorageService.LoadAlarms();
+                var alarms = GetCurrentAlarms();
                 
                 if (alarms == null || alarms.Count == 0)
                 {
@@ -739,7 +753,7 @@ namespace DongNoti.Views
                                    MessageBoxImage.Information);
                     return;
                 }
-                var currentAlarms = StorageService.LoadAlarms();
+                var currentAlarms = GetCurrentAlarms();
                 currentAlarms ??= new List<Alarm>();
                 var hasExistingAlarms = currentAlarms.Count > 0;
 
@@ -769,7 +783,7 @@ namespace DongNoti.Views
                                 mergedAlarms.Add(importedAlarm);
                             }
                         }
-                        StorageService.SaveAlarms(mergedAlarms);
+                        ReplaceCurrentAlarms(mergedAlarms);
                         MessageBox.Show($"알람 병합 완료: 총 {mergedAlarms.Count}개 (기존 {currentAlarms.Count}개 + 신규 {importedAlarms.Count - (importedAlarms.Count - (mergedAlarms.Count - currentAlarms.Count))}개)", 
                                        "완료", 
                                        MessageBoxButton.OK, 
@@ -777,7 +791,7 @@ namespace DongNoti.Views
                     }
                     else
                     {
-                        StorageService.SaveAlarms(importedAlarms);
+                        ReplaceCurrentAlarms(importedAlarms);
                         MessageBox.Show($"알람 교체 완료: {importedAlarms.Count}개", 
                                        "완료", 
                                        MessageBoxButton.OK, 
@@ -786,7 +800,7 @@ namespace DongNoti.Views
                 }
                 else
                 {
-                    StorageService.SaveAlarms(importedAlarms);
+                    ReplaceCurrentAlarms(importedAlarms);
                     MessageBox.Show($"{importedAlarms.Count}개의 알람을 가져왔습니다.", 
                                    "완료", 
                                    MessageBoxButton.OK, 
@@ -814,4 +828,3 @@ namespace DongNoti.Views
         }
     }
 }
-

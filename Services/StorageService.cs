@@ -87,7 +87,7 @@ namespace DongNoti.Services
         }
 
         /// <summary>
-        /// 알람 목록을 저장합니다. (파일 접근 오류 시 재시도)
+        /// 알람 목록을 저장합니다. (원자적 교체 및 재시도)
         /// </summary>
         public static void SaveAlarms(List<Alarm> alarms)
         {
@@ -95,7 +95,7 @@ namespace DongNoti.Services
             {
                 LogService.LogDebug($"알람 저장 시작: {alarms.Count}개");
                 var json = JsonSerializer.Serialize(alarms, JsonOptions);
-                File.WriteAllText(AlarmsFilePath, json);
+                SaveFileAtomically(AlarmsFilePath, json);
                 LogService.LogDebug("알람 저장 완료");
                 return true;
             }, "알람 저장", true);
@@ -123,19 +123,51 @@ namespace DongNoti.Services
         }
 
         /// <summary>
-        /// 앱 설정을 저장합니다. (파일 접근 오류 시 재시도)
+        /// 앱 설정을 저장합니다. (원자적 교체 및 재시도)
         /// </summary>
         public static void SaveSettings(AppSettings settings)
         {
             ExecuteWithRetry(() =>
             {
                 var json = JsonSerializer.Serialize(settings, JsonOptions);
-                File.WriteAllText(SettingsFilePath, json);
+                SaveFileAtomically(SettingsFilePath, json);
                 return true;
             }, "설정 저장", true);
         }
 
-        private static T ExecuteWithRetry<T>(Func<T> action, string operation, bool throwOnFailure)
+        /// <summary>
+        /// 파일을 임시 파일에 먼저 쓰고 교체하는 방식으로 안전하게 저장합니다.
+        /// </summary>
+        internal static void SaveFileAtomically(string filePath, string content)
+        {
+            string tempPath = filePath + ".tmp";
+            string backupPath = filePath + ".bak";
+
+            // 1. 임시 파일에 쓰기
+            File.WriteAllText(tempPath, content);
+
+            // 2. 파일 교체 (성공 시 tmp는 삭제되고 원본은 backup이 됨)
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    File.Replace(tempPath, filePath, backupPath);
+                }
+                catch (IOException)
+                {
+                    // Replace가 실패할 경우(예: 백신 잠금 등) Move 시도
+                    if (File.Exists(backupPath)) File.Delete(backupPath);
+                    File.Move(filePath, backupPath);
+                    File.Move(tempPath, filePath);
+                }
+            }
+            else
+            {
+                File.Move(tempPath, filePath);
+            }
+        }
+
+        internal static T ExecuteWithRetry<T>(Func<T> action, string operation, bool throwOnFailure)
         {
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
@@ -146,7 +178,7 @@ namespace DongNoti.Services
                 catch (IOException ex) when (attempt < MaxRetries)
                 {
                     LogService.LogDebug($"{operation} 재시도 {attempt}/{MaxRetries}: {ex.Message}");
-                    Thread.Sleep(RetryDelayMs * attempt); // 지수 백오프
+                    Thread.Sleep(RetryDelayMs * (int)Math.Pow(2, attempt - 1)); // 지수 백오프
                 }
                 catch (Exception ex)
                 {

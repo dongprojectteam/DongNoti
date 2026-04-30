@@ -54,6 +54,12 @@ namespace DongNoti
         private const string PipeName = "DongNoti_SingleInstance_Pipe";
         private Task? _pipeServerTask;
         private CancellationTokenSource? _pipeServerCancellation;
+
+        // 알람 팝업 큐 및 워커
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Alarm> _alarmPopupQueue = 
+            new System.Collections.Concurrent.ConcurrentQueue<Alarm>();
+        private Task? _popupWorkerTask;
+        private readonly CancellationTokenSource _popupWorkerCancellation = new CancellationTokenSource();
         
         /// <summary>
         /// AlarmService 인스턴스에 접근하기 위한 프로퍼티
@@ -62,6 +68,7 @@ namespace DongNoti
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // ... (기존 Mutex 및 단일 인스턴스 로직 동일하게 유지)
             bool createdNew;
             _mutex = new Mutex(true, MutexName, out createdNew);
             
@@ -89,8 +96,12 @@ namespace DongNoti
                 return;
             }
             StartPipeServer();
+            StartPopupWorker(); // 팝업 워커 시작
+            
+            // ... (기존 로직 계속)
             AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
             {
+                // ... (생략)
                 try
                 {
                     var logDir = System.IO.Path.Combine(
@@ -119,14 +130,12 @@ namespace DongNoti
                 }
                 
                 LogService.LogInfo("=== DongNoti 앱 시작 ===");
-                LogService.LogInfo($"로그 활성화: {settings.EnableLogging}");
-                LogService.LogInfo($"UI 로그 활성화: {settings.ShowUILog}");
-                LogService.LogInfo("서비스 초기화 시작");
                 _notificationService = new NotificationService();
                 _soundService = new SoundService();
                 _alarmService = new AlarmService();
                 _alarmService.AlarmTriggered += OnAlarmTriggered;
-                LogService.LogInfo("서비스 초기화 완료");
+                _alarmService.AlarmsChanged += OnAlarmsChanged;
+                // ... (생략)
                 _taskbarIcon = new TaskbarIcon
                 {
                     Icon = new System.Drawing.Icon(Application.GetResourceStream(
@@ -203,21 +212,61 @@ namespace DongNoti
 
         private void OnAlarmTriggered(Alarm alarm)
         {
-            LogService.LogInfo($"알람 트리거 이벤트 수신: '{alarm.Title}'");
-            Dispatcher.Invoke(() =>
+            LogService.LogInfo($"알람 트리거 이벤트 수신 (큐 대기열 추가): '{alarm.Title}'");
+            // 스냅샷(복사본)을 큐에 추가하여 데이터 일관성 보장
+            _alarmPopupQueue.Enqueue(alarm.Clone());
+        }
+
+        private void StartPopupWorker()
+        {
+            var token = _popupWorkerCancellation.Token;
+            _popupWorkerTask = Task.Run(async () =>
             {
-                try
+                while (!token.IsCancellationRequested)
                 {
-                    _notificationService?.ShowAlarmNotification(alarm);
-                    var popup = new AlarmPopup(alarm, _soundService!);
-                    popup.Show();
-                    LogService.LogInfo($"알람 팝업 창 표시: '{alarm.Title}'");
+                    try
+                    {
+                        if (_alarmPopupQueue.TryDequeue(out var alarm))
+                        {
+                            await Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                try
+                                {
+                                    _notificationService?.ShowAlarmNotification(alarm);
+                                    var popup = new AlarmPopup(alarm, _soundService!);
+                                    popup.Show();
+                                    LogService.LogInfo($"알람 팝업 표시 완료: '{alarm.Title}'");
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogService.LogError($"알람 팝업 표시 중 오류: '{alarm.Title}'", ex);
+                                }
+                            }), System.Windows.Threading.DispatcherPriority.Input);
+
+                            // 팝업 간 간격을 두어 UI 부하 분산
+                            await Task.Delay(200, token);
+                        }
+                        else
+                        {
+                            await Task.Delay(100, token);
+                        }
+                    }
+                    catch (OperationCanceledException) { break; }
+                    catch (Exception ex)
+                    {
+                        LogService.LogError("팝업 워커 루프 중 오류", ex);
+                        await Task.Delay(1000, token);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    LogService.LogError($"알람 트리거 처리 중 오류: '{alarm.Title}'", ex);
-                }
-            });
+            }, token);
+        }
+
+        private void OnAlarmsChanged(IReadOnlyList<Alarm> alarms)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                RefreshAlarmViews(refreshMainWindow: true);
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         public void RefreshAlarms(bool refreshMainWindow = false)
@@ -225,6 +274,18 @@ namespace DongNoti
             try
             {
                 _alarmService?.RefreshAlarms();
+                RefreshAlarmViews(refreshMainWindow);
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("RefreshAlarms 중 오류", ex);
+            }
+        }
+
+        private void RefreshAlarmViews(bool refreshMainWindow)
+        {
+            try
+            {
                 if (refreshMainWindow && _mainWindow != null)
                 {
                     _mainWindow.Dispatcher.Invoke(() =>
@@ -384,9 +445,7 @@ namespace DongNoti
                                             alarmCopy.IsEnabled = true;
                                             System.Threading.Tasks.Task.Run(() =>
                                             {
-                                                StorageService.SaveAlarms(allAlarms);
-                                                _alarmService?.RefreshAlarms();
-                                                UpdateAlarmsMenu(parentMenu);
+                                                _alarmService?.SetAlarmEnabled(alarmCopy.Id, true);
                                             });
                                         }
                                         catch (Exception ex)
@@ -402,9 +461,7 @@ namespace DongNoti
                                             alarmCopy.IsEnabled = false;
                                             System.Threading.Tasks.Task.Run(() =>
                                             {
-                                                StorageService.SaveAlarms(allAlarms);
-                                                _alarmService?.RefreshAlarms();
-                                                UpdateAlarmsMenu(parentMenu);
+                                                _alarmService?.SetAlarmEnabled(alarmCopy.Id, false);
                                             });
                                         }
                                         catch (Exception ex)
@@ -819,11 +876,15 @@ namespace DongNoti
             _logWindow?.Close();
             LogService.Shutdown();
             _pipeServerCancellation?.Cancel();
+            _popupWorkerCancellation.Cancel(); // 팝업 워커 중단
+            
             try
             {
-                _pipeServerTask?.Wait(1000); // 최대 1초 대기
+                // 최대 1초 대기 후 리소스 해제
+                Task.WaitAll(new[] { _pipeServerTask!, _popupWorkerTask! }.Where(t => t != null).ToArray()!, 1000);
             }
             catch { }
+            
             _mutex?.ReleaseMutex();
             _mutex?.Dispose();
             

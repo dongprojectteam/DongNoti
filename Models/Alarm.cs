@@ -38,6 +38,7 @@ namespace DongNoti.Models
         public AlarmType AlarmType { get; set; } = AlarmType.Alarm;
         public DateTime? TargetDate { get; set; }
         public string? Memo { get; set; }
+        public bool AutoRegisterAsDday { get; set; } = false;
 
         [JsonIgnore]
         public string CategoryDisplay => Category ?? "기본";
@@ -263,6 +264,18 @@ namespace DongNoti.Models
                     _ => "없음"
                 };
             }
+        }
+
+        /// <summary>
+        /// 객체의 얕은 복사본을 생성합니다. (팝업 큐 스냅샷용)
+        /// </summary>
+        public Alarm Clone()
+        {
+            var clone = (Alarm)this.MemberwiseClone();
+            clone.SelectedDaysOfWeek = SelectedDaysOfWeek != null
+                ? new List<DayOfWeek>(SelectedDaysOfWeek)
+                : new List<DayOfWeek>();
+            return clone;
         }
     }
 }

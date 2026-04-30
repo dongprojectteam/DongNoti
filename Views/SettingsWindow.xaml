@@ -1,416 +1,543 @@
 <Window x:Class="DongNoti.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:models="clr-namespace:DongNoti.Models"
-        Title="설정" Height="750" Width="550"
+        Title="설정"
+        Height="640"
+        Width="520"
+        MinHeight="560"
+        MinWidth="480"
         WindowStartupLocation="CenterOwner"
         Icon="/Resources/app.ico"
-        ResizeMode="NoResize">
+        ResizeMode="CanResizeWithGrip"
+        Background="#F4F6F8"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
     <Window.Resources>
-        <!-- Boolean to Visibility Converter -->
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        
-        <Style x:Key="ModernRaisedButton" TargetType="Button">
-            <Setter Property="Background" Value="#2196F3"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12,6"/>
+
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="BorderBrushSoft" Color="#DDE3EA"/>
+        <SolidColorBrush x:Key="TextMainBrush" Color="#1F2937"/>
+        <SolidColorBrush x:Key="TextSubtleBrush" Color="#667085"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#2F80ED"/>
+
+        <Style x:Key="SectionPanelStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMainBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="HintTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSubtleBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderBrush" Value="#C9D2DD"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="ComboBox" BasedOn="{StaticResource ModernComboBoxStyle}">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMainBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                CornerRadius="4" 
-                                Padding="{TemplateBinding Padding}">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#40000000" Direction="270" ShadowDepth="2" BlurRadius="4" Opacity="0.3"/>
-                            </Border.Effect>
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemChrome"
+                                Background="Transparent"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              RecognizesAccessKey="True"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemChrome" Property="Background" Value="#F0F6FF"/>
+                                <Setter Property="Foreground" Value="#1F6FD6"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemChrome" Property="Background" Value="#E7F0FF"/>
+                                <Setter Property="Foreground" Value="#185ABC"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#98A2B3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextMainBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="ListItemCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#FAFBFC"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="9,7"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1976D2"/>
-                </Trigger>
-                <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#1565C0"/>
+                    <Setter Property="Background" Value="#F4F8FF"/>
+                    <Setter Property="BorderBrush" Value="#B7D4FF"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
-        
-        <Style x:Key="ModernOutlinedButton" TargetType="Button" BasedOn="{StaticResource ModernRaisedButton}">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#2196F3"/>
-            <Setter Property="BorderBrush" Value="#2196F3"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MinHeight" Value="0"/>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="MinWidth" Value="72"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
+                        <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4" 
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1F6FD6"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#185ABC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#2F80ED"/>
+            <Setter Property="BorderBrush" Value="#B7D4FF"/>
+            <Setter Property="FontWeight" Value="Normal"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#E3F2FD"/>
-                    <Setter Property="BorderBrush" Value="#1976D2"/>
+                    <Setter Property="Background" Value="#F0F6FF"/>
+                    <Setter Property="BorderBrush" Value="#82B8FF"/>
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#BBDEFB"/>
+                    <Setter Property="Background" Value="#DCEBFF"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0"
+                                    Background="#E9EEF5"
+                                    BorderBrush="#DDE3EA"
+                                    BorderThickness="1"
+                                    CornerRadius="7"
+                                    Padding="3"
+                                    HorizontalAlignment="Left">
+                                <TabPanel IsItemsHost="True"
+                                          Background="Transparent"
+                                          KeyboardNavigation.TabIndex="1"/>
+                            </Border>
+                            <ContentPresenter Grid.Row="1"
+                                              ContentSource="SelectedContent"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Padding" Value="16,6"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSubtleBrush}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabChrome"
+                                Background="Transparent"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabChrome" Property="Background" Value="#F8FBFF"/>
+                                <Setter Property="Foreground" Value="#2F80ED"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabChrome" Property="Background" Value="#1F2937"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
-    
-    <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Padding="20" Margin="0">
-        <Border.Effect>
-            <DropShadowEffect Color="#20000000" Direction="270" ShadowDepth="2" BlurRadius="8" Opacity="0.15"/>
-        </Border.Effect>
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            
-            <!-- 스크롤 가능한 내용 영역 -->
-            <ScrollViewer Grid.Row="0" 
-                          VerticalScrollBarVisibility="Auto"
-                          Padding="0,0,8,0"
-                          CanContentScroll="False">
-                <StackPanel Margin="0,0,8,0">
 
-                    <!-- 자동 실행 -->
-                    <CheckBox x:Name="RunOnStartupCheckBox" 
-                             Content="Windows 시작 시 자동 실행"
-                             Margin="0,0,0,15"
-                             Checked="RunOnStartupCheckBox_Checked"
-                             Unchecked="RunOnStartupCheckBox_Unchecked"/>
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-                    <!-- 시작 시 트레이로 숨김 -->
-                    <CheckBox x:Name="HideToTrayOnStartupCheckBox" 
-                             Content="시작 시 트레이로 숨김"
-                             Margin="0,0,0,15"/>
-
-                    <!-- 종료 시 트레이로 최소화 -->
-                    <CheckBox x:Name="MinimizeToTrayCheckBox" 
-                             Content="종료 시 트레이로 최소화"
-                             Margin="0,0,0,15"/>
-
-                    <!-- 로그 활성화 -->
-                    <StackPanel Margin="0,0,0,15">
-                <CheckBox x:Name="EnableLoggingCheckBox" 
-                         Content="로그 파일 생성 (디버깅용)"
-                         Margin="0,0,0,5"/>
-                <CheckBox x:Name="ShowUILogCheckBox" 
-                         Content="UI 로그 창 표시"
-                         Margin="0,5,0,5"
-                         Checked="ShowUILogCheckBox_Checked"
-                         Unchecked="ShowUILogCheckBox_Unchecked"/>
-                <StackPanel Orientation="Horizontal" Margin="20,5,0,0">
-                    <Button Content="로그 파일로 저장" 
-                            Click="FlushLogs_Click" 
-                            Style="{StaticResource ModernOutlinedButton}"/>
-                    <Button Content="로그 파일 열기" 
-                            Click="OpenLogFile_Click" 
-                            Style="{StaticResource ModernOutlinedButton}"
-                            Margin="5,0,0,0"/>
-                    <Button Content="데이터 폴더 열기" 
-                            Click="OpenDataFolder_Click" 
-                            Style="{StaticResource ModernOutlinedButton}"
-                            Margin="5,0,0,0"/>
-                    <TextBlock x:Name="LogBufferCountText" 
-                               Text="(버퍼: 0개)" 
-                               VerticalAlignment="Center" 
-                               Margin="10,0,0,0"
-                               Foreground="Gray"
-                               FontSize="11"/>
-                    </StackPanel>
-                    </StackPanel>
-
-                    <!-- 집중 모드 설정 -->
-                    <GroupBox Header="집중 모드 프리셋" Padding="10" Margin="0,0,0,15">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    
-                    <!-- 설명 및 버튼 -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                        <TextBlock Text="빠른 실행을 위한 시간 프리셋을 관리합니다" 
-                                   FontSize="11" 
-                                   Foreground="#757575"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,10,0"/>
-                        <Button Content="+ 추가" 
-                                Click="AddPreset_Click" 
-                                Style="{StaticResource ModernOutlinedButton}"
-                                Padding="8,4"
-                                FontSize="11"
-                                MinWidth="60"/>
-                        <Button Content="기본값으로 초기화" 
-                                Click="ResetPresets_Click" 
-                                Style="{StaticResource ModernOutlinedButton}"
-                                Padding="8,4"
-                                FontSize="11"
-                                Margin="5,0,0,0"
-                                MinWidth="100"/>
-                    </StackPanel>
-                    
-                    <!-- 프리셋 목록 -->
-                    <ScrollViewer Grid.Row="1" 
-                                  VerticalScrollBarVisibility="Auto" 
-                                  MaxHeight="400"
-                                  Margin="0,0,0,10">
-                        <ItemsControl x:Name="PresetsItemsControl">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="White"
-                                            BorderBrush="#E0E0E0"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="10,8"
-                                            Margin="0,0,0,6">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            
-                                            <!-- 기본값 표시 -->
-                                            <RadioButton Grid.Column="0"
-                                                         x:Name="DefaultRadioButton"
-                                                         IsChecked="{Binding IsDefault, Mode=TwoWay}"
-                                                         Checked="DefaultPreset_Checked"
-                                                         Margin="0,0,12,0"
-                                                         VerticalAlignment="Center"
-                                                         GroupName="DefaultPreset"/>
-                                            
-                                            <!-- 프리셋 정보 -->
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding DisplayName}" 
-                                                           FontSize="13"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="#212121"/>
-                                                <TextBlock Text="{Binding Minutes, StringFormat={}{0}분}" 
-                                                           FontSize="11"
-                                                           Foreground="#757575"
-                                                           Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                            
-                                            <!-- 기본값 라벨 -->
-                                            <TextBlock Grid.Column="2"
-                                                       Text="(기본값)"
-                                                       FontSize="10"
-                                                       Foreground="#2196F3"
-                                                       FontWeight="SemiBold"
-                                                       VerticalAlignment="Center"
-                                                       Margin="8,0,12,0"
-                                                       Visibility="{Binding IsDefault, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                            
-                                            <!-- 삭제 버튼 -->
-                                            <Button Grid.Column="3"
-                                                    Content="삭제"
-                                                    Click="DeletePreset_Click"
-                                                    Style="{StaticResource ModernOutlinedButton}"
-                                                    Padding="8,4"
-                                                    FontSize="11"
-                                                    MinWidth="50"
-                                                    Tag="{Binding}"/>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                    
-                    <!-- 안내 텍스트 -->
-                    <TextBlock Grid.Row="2"
-                               Text="※ 라디오 버튼을 선택하여 기본 프리셋을 설정할 수 있습니다" 
-                               FontSize="10" 
-                               Foreground="#9E9E9E"
-                               TextWrapping="Wrap"
-                               Margin="0,0,0,0"/>
-                    </Grid>
-                    </GroupBox>
-
-                    <!-- 알람 카테고리 -->
-                    <GroupBox Header="알람 카테고리" Padding="10" Margin="0,0,0,15">
-                <StackPanel>
-                    <TextBlock Text="알람을 분류하기 위한 카테고리를 관리합니다" 
-                               FontSize="11" 
-                               Foreground="#757575"
-                               Margin="0,0,0,10"
-                               TextWrapping="Wrap"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                        <TextBox x:Name="NewCategoryTextBox" 
-                                 Width="150"
-                                 Padding="8,6"
-                                 FontSize="12"
-                                 BorderBrush="#BDBDBD"
-                                 BorderThickness="1"
-                                 Margin="0,0,8,0"/>
-                        <Button Content="추가" 
-                                Click="AddCategory_Click" 
-                                Style="{StaticResource ModernOutlinedButton}"
-                                Padding="8,4"
-                                FontSize="12"
-                                MinWidth="60"
-                                Margin="0,0,8,0"/>
-                        <Button Content="초기화" 
-                                Click="ResetCategories_Click" 
-                                Style="{StaticResource ModernOutlinedButton}"
-                                Padding="8,4"
-                                FontSize="12"
-                                MinWidth="60"/>
-                    </StackPanel>
-                    <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="CategoriesItemsControl">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="White"
-                                            BorderBrush="#E0E0E0"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="10,8"
-                                            Margin="0,0,0,6">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="120"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding Name}"
-                                                       FontSize="13"
-                                                       VerticalAlignment="Center"/>
-                                            <ComboBox Grid.Column="1"
-                                                      ItemsSource="{Binding CategoryColorOptionsList, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                      DisplayMemberPath="Display"
-                                                      SelectedValuePath="Value"
-                                                      SelectedValue="{Binding Color, Mode=TwoWay}"
-                                                      SelectionChanged="CategoryColor_SelectionChanged"
-                                                      Margin="0,0,8,0"
-                                                      VerticalAlignment="Center"
-                                                      FontSize="12"
-                                                      Padding="6,4"/>
-                                            <Button Grid.Column="2"
-                                                    Content="삭제"
-                                                    Click="DeleteCategory_Click"
-                                                    Padding="8,4"
-                                                    FontSize="11"
-                                                    MinWidth="50"
-                                                    Tag="{Binding Name}">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource ModernOutlinedButton}">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Name}" Value="기본">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        </ScrollViewer>
-                    </StackPanel>
-                    </GroupBox>
-
-                    <!-- 알람 및 DDay 백업/복원 -->
-                    <GroupBox Header="알람 및 DDay 백업/복원" Padding="10" Margin="0,0,0,15">
-                <StackPanel>
-                    <TextBlock Text="알람 및 DDay 데이터를 파일로 내보내거나 가져올 수 있습니다" 
-                               FontSize="11" 
-                               Foreground="#757575"
-                               Margin="0,0,0,10"
-                               TextWrapping="Wrap"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                        <Button Content="내보내기" 
-                                Click="ExportAlarms_Click" 
-                                Style="{StaticResource ModernOutlinedButton}"
-                                Padding="12,6"
-                                FontSize="12"
-                                MinWidth="120"
-                                Margin="0,0,8,0"/>
-                        <Button Content=" 가져오기" 
-                                Click="ImportAlarms_Click" 
-                                Style="{StaticResource ModernOutlinedButton}"
-                                Padding="12,6"
-                                FontSize="12"
-                                MinWidth="120"/>
-                        </StackPanel>
-                    </StackPanel>
-                    </GroupBox>
-                </StackPanel>
-            </ScrollViewer>
-
-            <!-- 버전 정보 -->
-            <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,20,0,0">
-                <TextBlock x:Name="VersionTextBlock"
-                           Text="DongNoti v1.0.5.3" 
-                           FontSize="13" 
+        <Border Grid.Row="0"
+                Background="#1F2937"
+                CornerRadius="6"
+                Padding="14,10">
+            <StackPanel>
+                <TextBlock Text="설정"
+                           FontSize="16"
                            FontWeight="SemiBold"
-                           Foreground="#616161"
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,5"/>
-                <TextBlock Text="Windows 11용 알람 프로그램" 
-                           FontSize="11" 
-                           Foreground="#9E9E9E"
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,3"/>
-                <TextBlock Text="© 2026 DongNoti" 
-                           FontSize="10" 
-                           Foreground="#BDBDBD"
-                           HorizontalAlignment="Center"/>
+                           Foreground="White"/>
+                <TextBlock Text="앱 동작, 집중 모드, 데이터 관리를 조정합니다."
+                           FontSize="11"
+                           Foreground="#D1D9E6"
+                           Margin="0,2,0,0"/>
             </StackPanel>
+        </Border>
 
-            <!-- 버튼 -->
-            <StackPanel Grid.Row="2" 
-                        Orientation="Horizontal" 
-                        HorizontalAlignment="Right" 
-                        Margin="0,20,0,0">
-                <Button Content="⌨️ 단축키" 
-                        Click="KeyboardShortcuts_Click" 
-                        Margin="0,0,15,0"
-                        Style="{StaticResource ModernOutlinedButton}"
-                        MinWidth="80" MinHeight="30"/>
-                <Button Content="확인" 
-                        Click="OK_Click" 
-                        Margin="5,0" 
-                        IsDefault="True"
-                        Style="{StaticResource ModernRaisedButton}"
-                        MinWidth="65" MinHeight="30"/>
-                <Button Content="취소" 
-                        Click="Cancel_Click" 
-                        Margin="5,0" 
-                        IsCancel="True"
-                        Style="{StaticResource ModernOutlinedButton}"
-                        MinWidth="65" MinHeight="30"/>
-            </StackPanel>
-        </Grid>
-    </Border>
+        <TabControl Grid.Row="1" Margin="0,10,0,0">
+            <TabItem Header="일반">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,10,4,0">
+                    <StackPanel>
+                        <Border Style="{StaticResource SectionPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="앱 동작" Style="{StaticResource SectionTitleStyle}"/>
+                                <CheckBox x:Name="RunOnStartupCheckBox"
+                                          Content="Windows 시작 시 자동 실행"
+                                          Checked="RunOnStartupCheckBox_Checked"
+                                          Unchecked="RunOnStartupCheckBox_Unchecked"/>
+                                <CheckBox x:Name="HideToTrayOnStartupCheckBox"
+                                          Content="시작 시 트레이로 숨기기"/>
+                                <CheckBox x:Name="MinimizeToTrayCheckBox"
+                                          Content="닫기 시 트레이로 최소화"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="로그" Style="{StaticResource SectionTitleStyle}"/>
+                                <CheckBox x:Name="EnableLoggingCheckBox"
+                                          Content="로그 파일 생성"/>
+                                <CheckBox x:Name="ShowUILogCheckBox"
+                                          Content="UI 로그 창 표시"
+                                          Checked="ShowUILogCheckBox_Checked"
+                                          Unchecked="ShowUILogCheckBox_Unchecked"/>
+                                <WrapPanel Margin="0,3,0,0">
+                                    <Button Content="로그 저장"
+                                            Click="FlushLogs_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="0,0,6,6"/>
+                                    <Button Content="로그 열기"
+                                            Click="OpenLogFile_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="0,0,6,6"/>
+                                    <Button Content="데이터 폴더"
+                                            Click="OpenDataFolder_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="0,0,8,6"/>
+                                    <TextBlock x:Name="LogBufferCountText"
+                                               Text="버퍼: 0개"
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextSubtleBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="2,0,0,6"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="알람 카테고리" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="알람과 D-Day를 분류할 카테고리와 색상을 관리합니다."
+                                           Style="{StaticResource HintTextStyle}"
+                                           Margin="0,0,0,10"/>
+                                <DockPanel Margin="0,0,0,10">
+                                    <Button DockPanel.Dock="Right"
+                                            Content="초기화"
+                                            Click="ResetCategories_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="6,0,0,0"/>
+                                    <Button DockPanel.Dock="Right"
+                                            Content="추가"
+                                            Click="AddCategory_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="6,0,0,0"/>
+                                    <TextBox x:Name="NewCategoryTextBox"/>
+                                </DockPanel>
+                                <ScrollViewer MaxHeight="210" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl x:Name="CategoriesItemsControl">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Style="{StaticResource ListItemCardStyle}">
+                                                    <Grid VerticalAlignment="Center">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="132"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontSize="12"
+                                                                   Foreground="{StaticResource TextMainBrush}"
+                                                                   VerticalAlignment="Center"/>
+                                                        <ComboBox Grid.Column="1"
+                                                                  ItemsSource="{Binding CategoryColorOptionsList, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                  DisplayMemberPath="Display"
+                                                                  SelectedValuePath="Value"
+                                                                  SelectedValue="{Binding Color, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                  SelectionChanged="CategoryColor_SelectionChanged"
+                                                                  Margin="8,0"
+                                                                  VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="2"
+                                                                Content="삭제"
+                                                                Click="DeleteCategory_Click"
+                                                                MinWidth="52"
+                                                                VerticalAlignment="Center"
+                                                                Tag="{Binding Name}">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Name}" Value="기본">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="집중">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,10,4,0">
+                    <Border Style="{StaticResource SectionPanelStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                                <StackPanel DockPanel.Dock="Left">
+                                    <TextBlock Text="집중 모드 프리셋" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock Text="빠른 실행에 사용할 시간 프리셋을 관리합니다."
+                                               Style="{StaticResource HintTextStyle}"/>
+                                </StackPanel>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="추가"
+                                            Click="AddPreset_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="8,0,0,0"/>
+                                    <Button Content="초기화"
+                                            Click="ResetPresets_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Margin="6,0,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+
+                            <ScrollViewer Grid.Row="1" MaxHeight="390" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="PresetsItemsControl">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource ListItemCardStyle}"
+                                                    Padding="10,8">
+                                                <Grid VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <RadioButton Grid.Column="0"
+                                                                 IsChecked="{Binding IsDefault, Mode=TwoWay}"
+                                                                 Checked="DefaultPreset_Checked"
+                                                                 Margin="0,0,10,0"
+                                                                 HorizontalAlignment="Center"
+                                                                 VerticalAlignment="Center"
+                                                                 GroupName="DefaultPreset"/>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   FontSize="13"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextMainBrush}"/>
+                                                        <TextBlock Text="{Binding Minutes, StringFormat={}{0}분}"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource TextSubtleBrush}"/>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="기본"
+                                                               FontSize="10"
+                                                               Foreground="#2F80ED"
+                                                               FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Margin="8,0,12,0"
+                                                               Visibility="{Binding IsDefault, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                    <Button Grid.Column="3"
+                                                            Content="삭제"
+                                                            Click="DeletePreset_Click"
+                                                            Style="{StaticResource SecondaryButtonStyle}"
+                                                            MinWidth="52"
+                                                            VerticalAlignment="Center"
+                                                            Tag="{Binding}"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <TextBlock Grid.Row="2"
+                                       Text="라디오 버튼으로 기본 프리셋을 선택합니다."
+                                       Style="{StaticResource HintTextStyle}"
+                                       Margin="0,6,0,0"/>
+                        </Grid>
+                    </Border>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="데이터">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,10,4,0">
+                    <StackPanel>
+                        <Border Style="{StaticResource SectionPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="백업 / 복원" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="알람과 D-Day 데이터를 파일로 내보내거나 가져옵니다."
+                                           Style="{StaticResource HintTextStyle}"
+                                           Margin="0,0,0,10"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="내보내기"
+                                            Click="ExportAlarms_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            MinWidth="100"
+                                            Margin="0,0,8,0"/>
+                                    <Button Content="가져오기"
+                                            Click="ImportAlarms_Click"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            MinWidth="100"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SectionPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Text="정보" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock x:Name="VersionTextBlock"
+                                           Text="DongNoti v1.0.5.6"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMainBrush}"/>
+                                <TextBlock Text="Windows 알람 프로그램"
+                                           Style="{StaticResource HintTextStyle}"
+                                           Margin="0,4,0,0"/>
+                                <TextBlock Text="© 2026 DongNoti"
+                                           FontSize="10"
+                                           Foreground="#98A2B3"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="2"
+                BorderBrush="{StaticResource BorderBrushSoft}"
+                BorderThickness="0,1,0,0"
+                Padding="0,10,0,0"
+                Margin="0,10,0,0">
+            <Grid>
+                <Button Content="단축키"
+                        Click="KeyboardShortcuts_Click"
+                        HorizontalAlignment="Left"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        MinWidth="74"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="확인"
+                            Click="OK_Click"
+                            IsDefault="True"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Margin="0,0,8,0"/>
+                    <Button Content="취소"
+                            Click="Cancel_Click"
+                            IsCancel="True"
+                            Style="{StaticResource SecondaryButtonStyle}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>

@@ -31,17 +31,6 @@ namespace DongNoti.Views
         private void DdayWindow_Loaded(object sender, RoutedEventArgs e)
         {
             RefreshDdayList();
-            if (Resources["DdayItemContextMenu"] is ContextMenu ctxMenu)
-            {
-                if (ctxMenu.Items.Count > 0 && ctxMenu.Items[0] is MenuItem registerItem)
-                    registerItem.Click += RegisterAsAlarm_Click;
-                if (ctxMenu.Items.Count > 1 && ctxMenu.Items[1] is MenuItem editItem)
-                    editItem.Click += EditDday_Click;
-                if (ctxMenu.Items.Count > 2 && ctxMenu.Items[2] is MenuItem cloneItem)
-                    cloneItem.Click += CloneDday_Click;
-                if (ctxMenu.Items.Count > 3 && ctxMenu.Items[3] is MenuItem deleteItem)
-                    deleteItem.Click += DeleteDday_Click;
-            }
             if (_updateTimer != null)
             {
                 _updateTimer.Start();
@@ -64,6 +53,12 @@ namespace DongNoti.Views
 
         public void RefreshDdayList()
         {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(RefreshDdayList), DispatcherPriority.DataBind);
+                return;
+            }
+
             try
             {
                 if (_app?.AlarmService == null)
@@ -89,35 +84,22 @@ namespace DongNoti.Views
                 {
                     _lastSelectedDday = previouslySelectedDday;
                 }
-                Dispatcher.BeginInvoke(() =>
+                if (DdayListBox == null)
+                    return;
+
+                DdayListBox.ItemsSource = ddays;
+                DdayListBox.Items.Refresh();
+
+                if (EmptyStatePanel != null)
                 {
-                    if (DdayListBox == null)
-                        return;
-                    DdayListBox.ItemsSource = ddays;
-                    DdayListBox.Items.Refresh();
-                    if (EmptyStatePanel != null && DdayListBox != null)
-                    {
-                        EmptyStatePanel.Visibility = ddays.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-                        DdayListBox.Visibility = ddays.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-                    }
-                    if (previouslySelectedDday != null && DdayListBox != null)
-                    {
-                        if (DdayListBox.ItemContainerGenerator.Status != System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
-                        {
-                            DdayListBox.ItemContainerGenerator.StatusChanged += (s, e) =>
-                            {
-                                if (DdayListBox != null && DdayListBox.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
-                                {
-                                    RestoreSelectionAndShowMemo(previouslySelectedDday);
-                                }
-                            };
-                        }
-                        else
-                        {
-                            Dispatcher.BeginInvoke(() => RestoreSelectionAndShowMemo(previouslySelectedDday), DispatcherPriority.Loaded);
-                        }
-                    }
-                }, DispatcherPriority.Background);
+                    EmptyStatePanel.Visibility = ddays.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+                    DdayListBox.Visibility = ddays.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+                }
+
+                if (previouslySelectedDday != null)
+                {
+                    Dispatcher.BeginInvoke(() => RestoreSelectionAndShowMemo(previouslySelectedDday), DispatcherPriority.Loaded);
+                }
             }
             catch (Exception ex)
             {
@@ -177,30 +159,83 @@ namespace DongNoti.Views
             }
         }
 
-        private void DdayListBox_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void DdayListBoxItem_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             try
             {
-                if (DdayListBox == null)
+                if (DdayListBox == null || e.ChangedButton != System.Windows.Input.MouseButton.Left)
                     return;
-                var source = e.OriginalSource as DependencyObject;
-                var listBoxItem = FindParent<ListBoxItem>(source);
-                if (listBoxItem != null && listBoxItem.DataContext is Alarm clickedDday)
+
+                if (sender is not ListBoxItem listBoxItem || listBoxItem.DataContext is not Alarm clickedDday)
+                    return;
+
+                e.Handled = true;
+
+                if (_lastSelectedDday != null && _lastSelectedDday.Id == clickedDday.Id)
                 {
-                    if (_lastSelectedDday != null && _lastSelectedDday.Id == clickedDday.Id)
-                    {
-                        e.Handled = true;
-                        DdayListBox.SelectedItem = null;
-                        _lastSelectedDday = null;
-                        HideAllMemos();
-                        return;
-                    }
+                    DdayListBox.SelectedItem = null;
+                    _lastSelectedDday = null;
+                    HideAllMemos();
+                    return;
                 }
+
+                DdayListBox.SelectedItem = clickedDday;
+                _lastSelectedDday = clickedDday;
+                HideAllMemos();
+                Dispatcher.BeginInvoke(() => ShowMemoForDday(clickedDday), DispatcherPriority.Loaded);
             }
             catch (Exception ex)
             {
                 LogService.LogError("Dday 항목 클릭 처리 중 오류", ex);
             }
+        }
+
+        private void DdayListBoxItem_PreviewMouseRightButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                if (DdayListBox == null)
+                    return;
+
+                if (sender is not ListBoxItem listBoxItem || listBoxItem.DataContext is not Alarm clickedDday)
+                    return;
+
+                e.Handled = true;
+                DdayListBox.SelectedItem = clickedDday;
+                _lastSelectedDday = clickedDday;
+                listBoxItem.Focus();
+
+                var menu = CreateDdayItemContextMenu();
+                menu.PlacementTarget = listBoxItem;
+                menu.IsOpen = true;
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("Dday 컨텍스트 메뉴 표시 중 오류", ex);
+            }
+        }
+
+        private ContextMenu CreateDdayItemContextMenu()
+        {
+            var menu = new ContextMenu();
+
+            var registerItem = new MenuItem { Header = "알람으로 등록" };
+            registerItem.Click += RegisterAsAlarm_Click;
+            menu.Items.Add(registerItem);
+
+            var editItem = new MenuItem { Header = "수정" };
+            editItem.Click += EditDday_Click;
+            menu.Items.Add(editItem);
+
+            var cloneItem = new MenuItem { Header = "복제" };
+            cloneItem.Click += CloneDday_Click;
+            menu.Items.Add(cloneItem);
+
+            var deleteItem = new MenuItem { Header = "삭제" };
+            deleteItem.Click += DeleteDday_Click;
+            menu.Items.Add(deleteItem);
+
+            return menu;
         }
 
         private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
@@ -271,7 +306,10 @@ namespace DongNoti.Views
                 if (DdayListBox == null)
                     return;
 
-                ShowSelectedMemoInternal(0);
+                if (DdayListBox.SelectedItem is Alarm selectedDday)
+                {
+                    ShowMemoForDday(selectedDday);
+                }
             }
             catch (Exception ex)
             {
@@ -279,26 +317,33 @@ namespace DongNoti.Views
             }
         }
 
-        private void ShowSelectedMemoInternal(int retryCount = 0)
+        private void ShowMemoForDday(Alarm dday, int retryCount = 0)
         {
             try
             {
-                if (DdayListBox?.SelectedItem is Alarm selectedDday && !string.IsNullOrWhiteSpace(selectedDday.Memo))
+                if (DdayListBox == null || string.IsNullOrWhiteSpace(dday.Memo))
+                    return;
+
+                var currentDday = DdayListBox.Items
+                    .Cast<Alarm>()
+                    .FirstOrDefault(a => a.Id == dday.Id);
+                if (currentDday == null)
+                    return;
+
+                var container = DdayListBox.ItemContainerGenerator.ContainerFromItem(currentDday);
+                if (container is System.Windows.Controls.ListBoxItem selectedItem)
                 {
-                    var container = DdayListBox.ItemContainerGenerator.ContainerFromItem(selectedDday);
-                    if (container is System.Windows.Controls.ListBoxItem selectedItem)
+                    var memoTextBlock = FindVisualChild<System.Windows.Controls.TextBlock>(selectedItem, "MemoTextBlock");
+                    if (memoTextBlock != null)
                     {
-                        var memoTextBlock = FindVisualChild<System.Windows.Controls.TextBlock>(selectedItem, "MemoTextBlock");
-                        if (memoTextBlock != null)
-                        {
-                            memoTextBlock.Visibility = Visibility.Visible;
-                            return;
-                        }
+                        memoTextBlock.Visibility = Visibility.Visible;
+                        return;
                     }
-                    if (retryCount < 5 && DdayListBox.ItemContainerGenerator.Status != System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
-                    {
-                        Dispatcher.BeginInvoke(() => ShowSelectedMemoInternal(retryCount + 1), DispatcherPriority.Loaded);
-                    }
+                }
+
+                if (retryCount < 5)
+                {
+                    Dispatcher.BeginInvoke(() => ShowMemoForDday(dday, retryCount + 1), DispatcherPriority.Loaded);
                 }
             }
             catch (Exception ex)
@@ -393,8 +438,7 @@ namespace DongNoti.Views
             {
                 var allAlarms = _app?.AlarmService?.GetAlarms() ?? new List<Alarm>();
                 allAlarms.Add(alarmToAdd);
-                StorageService.SaveAlarms(allAlarms);
-                _app?.AlarmService?.RefreshAlarms();
+                _app?.AlarmService?.ReplaceAlarms(allAlarms);
                 Dispatcher.BeginInvoke(() =>
                 {
                     try
@@ -441,8 +485,7 @@ namespace DongNoti.Views
                 }
 
                 allAlarms[index] = dialog.Alarm;
-                StorageService.SaveAlarms(allAlarms);
-                _app?.AlarmService?.RefreshAlarms();
+                _app?.AlarmService?.ReplaceAlarms(allAlarms);
                 RefreshDdayList();
                 Dispatcher.BeginInvoke(() =>
                 {
@@ -501,10 +544,10 @@ namespace DongNoti.Views
 
             try
             {
-                var allAlarms = _app?.AlarmService?.GetAlarms() ?? new List<Alarm>();
-                allAlarms.Add(dialog.Alarm);
-                StorageService.SaveAlarms(allAlarms);
-                _app?.AlarmService?.RefreshAlarms();
+                if (_app?.AlarmService == null)
+                    return;
+
+                _app.AlarmService.AddAlarm(dialog.Alarm);
                 RefreshDdayList();
                 Dispatcher.BeginInvoke(() =>
                 {
@@ -547,10 +590,10 @@ namespace DongNoti.Views
 
             try
             {
-                var allAlarms = _app?.AlarmService?.GetAlarms() ?? new List<Alarm>();
-                allAlarms.Add(dialog.Alarm);
-                StorageService.SaveAlarms(allAlarms);
-                _app?.AlarmService?.RefreshAlarms();
+                if (_app?.AlarmService == null)
+                    return;
+
+                _app.AlarmService.AddAlarm(dialog.Alarm);
                 RefreshDdayList();
                 Dispatcher.BeginInvoke(() =>
                 {
@@ -597,21 +640,7 @@ namespace DongNoti.Views
                 if (removed == 0)
                     return;
 
-                StorageService.SaveAlarms(allAlarms);
-                _app?.AlarmService?.RefreshAlarms();
-                RefreshDdayList();
-
-                Dispatcher.BeginInvoke(() =>
-                {
-                    try
-                    {
-                        _app?.RefreshAlarms(refreshMainWindow: true);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.LogError("D-Day 삭제 후 목록 갱신 중 오류", ex);
-                    }
-                }, DispatcherPriority.Background);
+                _app?.AlarmService?.ReplaceAlarms(allAlarms);
 
                 LogService.LogInfo($"Dday 삭제 완료: '{dday.Title}'");
             }

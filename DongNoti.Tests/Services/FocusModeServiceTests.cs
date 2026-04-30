@@ -1,5 +1,6 @@
 using System;
-using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using DongNoti.Models;
 using DongNoti.Services;
 using FluentAssertions;
@@ -9,162 +10,64 @@ namespace DongNoti.Tests.Services
 {
     public class FocusModeServiceTests
     {
-        #region GetRemainingTime Logic Tests
-
         [Fact]
-        public void GetRemainingTime_WithFutureEndTime_ReturnsPositiveTimeSpan()
+        public void StartFocusMode_SetsActiveStateAndEndTime()
         {
-            var endTime = DateTime.Now.AddMinutes(30);
-            var remaining = endTime - DateTime.Now;
-            remaining.Should().BeGreaterThan(TimeSpan.Zero);
-            remaining.TotalMinutes.Should().BeApproximately(30, 1);
+            var service = FocusModeService.Instance;
+            int durationMinutes = 30;
+
+            service.StartFocusMode(durationMinutes);
+
+            service.IsFocusModeActive.Should().BeTrue();
+            service.EndTime.Should().BeAfter(DateTime.Now);
+            service.EndTime.Should().BeBefore(DateTime.Now.AddMinutes(durationMinutes + 1));
         }
 
         [Fact]
-        public void GetRemainingTime_WithPastEndTime_ReturnsZero()
+        public void StopFocusMode_ResetsState()
         {
-            var endTime = DateTime.Now.AddMinutes(-10);
-            var remaining = endTime - DateTime.Now;
-            if (remaining < TimeSpan.Zero)
-            {
-                remaining = TimeSpan.Zero;
-            }
+            var service = FocusModeService.Instance;
+            service.StartFocusMode(10);
 
-            remaining.Should().Be(TimeSpan.Zero);
+            service.StopFocusMode();
+
+            service.IsFocusModeActive.Should().BeFalse();
         }
 
         [Fact]
-        public void GetRemainingTime_Logic_HandlesNullEndTime()
+        public void RecordMissedAlarm_AddsToQueue()
         {
-            DateTime? endTime = null;
-            TimeSpan remaining;
-            if (endTime.HasValue)
-            {
-                remaining = endTime.Value - DateTime.Now;
-                remaining = remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
-            }
-            else
-            {
-                remaining = TimeSpan.Zero;
-            }
-            remaining.Should().Be(TimeSpan.Zero);
-        }
+            var service = FocusModeService.Instance;
+            service.ClearMissedAlarms();
+            var alarm = new Alarm { Id = "m-1", Title = "Missed" };
 
-        #endregion
+            service.RecordMissedAlarm(alarm);
 
-        #region GetPresets Logic Tests
-
-        [Fact]
-        public void GetPresets_EmptyPresets_ReturnsDefaultPresets()
-        {
-            var presets = new List<FocusModePreset>();
-            var result = presets.Count == 0 
-                ? AppSettings.GetDefaultPresets() 
-                : presets;
-            result.Should().NotBeEmpty();
-            result.Should().HaveCount(6);
+            var missed = service.GetMissedAlarms();
+            missed.Should().HaveCount(1);
+            missed[0].AlarmId.Should().Be("m-1");
         }
 
         [Fact]
-        public void GetPresets_WithPresets_ReturnsPresets()
+        public void GetRemainingTime_ReturnsCorrectTimeSpan()
         {
-            var presets = new List<FocusModePreset>
-            {
-                new FocusModePreset("custom1", "Custom 1", 45),
-                new FocusModePreset("custom2", "Custom 2", 90)
-            };
-            var result = presets.Count == 0
-                ? AppSettings.GetDefaultPresets()
-                : presets;
-            result.Should().HaveCount(2);
-            result[0].Id.Should().Be("custom1");
-        }
+            var service = FocusModeService.Instance;
+            service.StartFocusMode(60);
 
-        #endregion
+            var remaining = service.GetRemainingTime();
 
-        #region GetDefaultPreset Logic Tests
-
-        [Fact]
-        public void GetDefaultPreset_FindsPresetById()
-        {
-            var presets = AppSettings.GetDefaultPresets();
-            var defaultPresetId = "1h";
-            var defaultPreset = presets.FirstOrDefault(p => p.Id == defaultPresetId);
-            var result = defaultPreset ?? presets.FirstOrDefault();
-            result.Should().NotBeNull();
-            result!.Id.Should().Be("1h");
+            remaining.TotalMinutes.Should().BeInRange(59, 60);
         }
 
         [Fact]
-        public void GetDefaultPreset_NotFound_ReturnsFirstPreset()
+        public void Presets_ShouldContainDefaultValues()
         {
-            var presets = AppSettings.GetDefaultPresets();
-            var defaultPresetId = "nonexistent";
-            var defaultPreset = presets.FirstOrDefault(p => p.Id == defaultPresetId);
-            var result = defaultPreset ?? presets.FirstOrDefault();
-            result.Should().NotBeNull();
-            result!.Id.Should().Be("30m");
+            var service = FocusModeService.Instance;
+            var presets = service.GetPresets();
+
+            presets.Should().NotBeEmpty();
+            presets.Any(p => p.Minutes == 30).Should().BeTrue();
+            presets.Any(p => p.Minutes == 60).Should().BeTrue();
         }
-
-        #endregion
-
-        #region RecordMissedAlarm Logic Tests
-
-        [Fact]
-        public void RecordMissedAlarm_PreventsDuplicates()
-        {
-            var missedAlarms = new List<MissedAlarm>
-            {
-                new MissedAlarm("alarm1", "Test Alarm", DateTime.Now, "없음")
-            };
-            var alarmId = "alarm1";
-            var isDuplicate = missedAlarms.Any(m => m.AlarmId == alarmId);
-            isDuplicate.Should().BeTrue();
-        }
-
-        [Fact]
-        public void RecordMissedAlarm_AllowsNewAlarm()
-        {
-            var missedAlarms = new List<MissedAlarm>
-            {
-                new MissedAlarm("alarm1", "Test Alarm 1", DateTime.Now, "없음")
-            };
-            var alarmId = "alarm2";
-            var isDuplicate = missedAlarms.Any(m => m.AlarmId == alarmId);
-            isDuplicate.Should().BeFalse();
-        }
-
-        #endregion
-
-        #region IsFocusModeActive Logic Tests
-
-        [Fact]
-        public void IsFocusModeActive_WithFutureEndTime_ReturnsTrue()
-        {
-            var isActive = true;
-            DateTime? endTime = DateTime.Now.AddMinutes(30);
-            var result = isActive && endTime.HasValue && endTime.Value > DateTime.Now;
-            result.Should().BeTrue();
-        }
-
-        [Fact]
-        public void IsFocusModeActive_WithPastEndTime_ReturnsFalse()
-        {
-            var isActive = true;
-            DateTime? endTime = DateTime.Now.AddMinutes(-10);
-            var result = isActive && endTime.HasValue && endTime.Value > DateTime.Now;
-            result.Should().BeFalse();
-        }
-
-        [Fact]
-        public void IsFocusModeActive_WhenInactive_ReturnsFalse()
-        {
-            var isActive = false;
-            DateTime? endTime = DateTime.Now.AddMinutes(30);
-            var result = isActive && endTime.HasValue && endTime.Value > DateTime.Now;
-            result.Should().BeFalse();
-        }
-
-        #endregion
     }
 }

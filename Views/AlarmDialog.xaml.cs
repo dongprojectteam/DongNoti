@@ -50,6 +50,7 @@ namespace DongNoti.Views
                     RepeatComboBox.SelectedIndex = (int)existingAlarm.RepeatType;
                     SoundFilePathTextBox.Text = existingAlarm.SoundFilePath ?? "";
                     AutoDismissMinutesTextBox.Text = existingAlarm.AutoDismissMinutes.ToString();
+                    AutoRegisterAsDdayCheckBox.IsChecked = existingAlarm.AutoRegisterAsDday;
                 }
                 if (existingAlarm.SelectedDaysOfWeek != null && existingAlarm.SelectedDaysOfWeek.Any())
                 {
@@ -175,6 +176,10 @@ namespace DongNoti.Views
             {
                 AutoDismissPanel.Visibility = isDday ? Visibility.Collapsed : Visibility.Visible;
             }
+            if (AutoDdayPanel != null)
+            {
+                AutoDdayPanel.Visibility = isDday ? Visibility.Collapsed : Visibility.Visible;
+            }
             if (MemoPanel != null)
             {
                 MemoPanel.Visibility = isDday ? Visibility.Visible : Visibility.Collapsed;
@@ -258,12 +263,10 @@ namespace DongNoti.Views
                 }
 
                 var selectedTag = (RepeatComboBox.SelectedItem as ComboBoxItem)?.Tag?.ToString();
-                LogService.LogDebug($"UpdateDaysOfWeekVisibility 호출: SelectedTag={selectedTag}");
 
                 if (selectedTag == "Weekly")
                 {
                     DaysOfWeekPanel.Visibility = Visibility.Visible;
-                    LogService.LogInfo("요일 선택 패널 표시됨");
                     bool hasAnyChecked = (MondayCheckBox?.IsChecked == true) ||
                                         (TuesdayCheckBox?.IsChecked == true) ||
                                         (WednesdayCheckBox?.IsChecked == true) ||
@@ -276,13 +279,11 @@ namespace DongNoti.Views
                     {
                         var selectedDate = DatePicker.SelectedDate ?? DateTime.Today;
                         SetDayCheckBox(selectedDate.DayOfWeek, true);
-                        LogService.LogDebug($"요일 자동 선택: {selectedDate.DayOfWeek}");
                     }
                 }
                 else
                 {
                     DaysOfWeekPanel.Visibility = Visibility.Collapsed;
-                    LogService.LogDebug($"요일 선택 패널 숨김 (SelectedTag={selectedTag})");
                 }
             }
             catch (Exception ex)
@@ -497,7 +498,8 @@ namespace DongNoti.Views
                     SelectedDaysOfWeek = selectedDays,
                     AutoDismissMinutes = autoDismissMinutes,
                     Category = category == "기본" ? null : category,
-                    Priority = priority
+                    Priority = priority,
+                    AutoRegisterAsDday = AutoRegisterAsDdayCheckBox.IsChecked ?? false
                 };
             }
             if (_existingAlarm != null)
@@ -506,7 +508,9 @@ namespace DongNoti.Views
             }
             if (_existingAlarm == null)
             {
-                var existingAlarms = StorageService.LoadAlarms();
+                var existingAlarms = Application.Current is App app && app.AlarmService != null
+                    ? app.AlarmService.GetAlarms()
+                    : StorageService.LoadAlarms();
                 Alarm? duplicate = null;
 
                 if (alarmType == AlarmType.Alarm)

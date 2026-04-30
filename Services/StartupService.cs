@@ -19,8 +19,19 @@ namespace DongNoti.Services
 
                     if (enable)
                     {
-                        var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                        key.SetValue(AppName, exePath);
+                        // .NET 6+ 환경에서는 Environment.ProcessPath를 사용하여 실제 .exe 경로를 가져옵니다.
+                        var exePath = Environment.ProcessPath;
+                        if (string.IsNullOrEmpty(exePath))
+                        {
+                            // 폴백: ProcessPath가 없는 경우 현재 프로세스의 메인 모듈 경로 사용
+                            exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                        }
+
+                        if (!string.IsNullOrEmpty(exePath))
+                        {
+                            // 경로에 공백이 있을 수 있으므로 큰따옴표로 감쌉니다.
+                            key.SetValue(AppName, $"\"{exePath}\"");
+                        }
                     }
                     else
                     {

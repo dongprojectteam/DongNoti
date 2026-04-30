@@ -38,7 +38,12 @@ echo ========================================
 echo [2/4] Publishing in Release mode...
 echo ========================================
 echo.
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o "%PUBLISH_DIR%"
+if not exist "%SCRIPT_DIR%DongNoti.csproj" (
+    echo Error: Project file not found: %SCRIPT_DIR%DongNoti.csproj
+    pause
+    exit /b 1
+)
+dotnet publish "%SCRIPT_DIR%DongNoti.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o "%PUBLISH_DIR%"
 if errorlevel 1 (
     echo.
     echo Error: dotnet publish failed!

@@ -24,6 +24,9 @@ namespace DongNoti
         private bool _isSaving = false;
         private bool _isLoading = false;
         private bool _isInitialLoad = true;
+        private bool _isApplyingAlarmSnapshot = false;
+
+        private bool IsApplyingAlarmSnapshot => _isInitialLoad || _isLoading || _isApplyingAlarmSnapshot;
 
         public MainWindow()
         {
@@ -145,7 +148,7 @@ namespace DongNoti
 
         private void SaveAlarms()
         {
-            if (_isInitialLoad || _isLoading)
+            if (IsApplyingAlarmSnapshot)
             {
                 return;
             }
@@ -163,10 +166,13 @@ namespace DongNoti
                 }
 
                 _isSaving = true;
-                StorageService.SaveAlarms(_alarms);
-                if (Application.Current is App app)
+                if (Application.Current is App app && app.AlarmService != null)
                 {
-                    app.RefreshAlarms(refreshMainWindow: false);
+                    app.AlarmService.ReplaceAlarms(_alarms);
+                }
+                else
+                {
+                    StorageService.SaveAlarms(_alarms);
                 }
                 
                 UpdateStatus();
@@ -288,6 +294,9 @@ namespace DongNoti
         /// </summary>
         public void RefreshAlarmsList()
         {
+            var wasLoading = _isLoading;
+            _isLoading = true;
+            _isApplyingAlarmSnapshot = true;
             try
             {
                 if (Application.Current is App app && app.AlarmService != null)
@@ -342,6 +351,11 @@ namespace DongNoti
             catch (Exception ex)
             {
                 LogService.LogError("알람 목록 새로고침 중 오류", ex);
+            }
+            finally
+            {
+                _isApplyingAlarmSnapshot = false;
+                _isLoading = wasLoading;
             }
         }
 
@@ -634,7 +648,8 @@ namespace DongNoti
                     Priority = selected.Priority,
                     AlarmType = selected.AlarmType,
                     TargetDate = selected.TargetDate,
-                    Memo = selected.Memo
+                    Memo = selected.Memo,
+                    AutoRegisterAsDday = selected.AutoRegisterAsDday
                 };
 
                 var dialog = new AlarmDialog(clone, forClone: true);
@@ -645,6 +660,10 @@ namespace DongNoti
                     RefreshAlarmsList();
                     if (Application.Current is App app)
                     {
+                        if (dialog.Alarm.AlarmType == AlarmType.Alarm && dialog.Alarm.AutoRegisterAsDday && app.AlarmService != null)
+                        {
+                            app.AlarmService.CreateNextDdayForAlarm(dialog.Alarm.Id);
+                        }
                         var ddayWindow = app.GetDdayWindow();
                         if (ddayWindow != null && ddayWindow.IsVisible)
                             ddayWindow.RefreshDdayList();
@@ -675,13 +694,24 @@ namespace DongNoti
                 var dialog = new AlarmDialog();
                 if (dialog.ShowDialog() == true && dialog.Alarm != null)
                 {
-                    _alarms.Add(dialog.Alarm);
-                    SaveAlarms(); // 동기적으로 저장 (AlarmService도 자동으로 새로고침됨)
+                    if (Application.Current is App currentApp && currentApp.AlarmService != null)
+                    {
+                        currentApp.AlarmService.AddAlarm(dialog.Alarm);
+                    }
+                    else
+                    {
+                        _alarms.Add(dialog.Alarm);
+                        SaveAlarms();
+                    }
                     
                     RefreshAlarmsList();
                     
                     if (Application.Current is App app)
                     {
+                        if (dialog.Alarm.AlarmType == AlarmType.Alarm && dialog.Alarm.AutoRegisterAsDday && app.AlarmService != null)
+                        {
+                            app.AlarmService.CreateNextDdayForAlarm(dialog.Alarm.Id);
+                        }
                         var ddayWindow = app.GetDdayWindow();
                         if (ddayWindow != null && ddayWindow.IsVisible)
                         {
@@ -863,24 +893,107 @@ namespace DongNoti
 
         private void AlarmToggle_Checked(object sender, RoutedEventArgs e)
         {
-            if (_isInitialLoad || _isLoading)
+            if (IsApplyingAlarmSnapshot || _isSaving)
                 return;
                 
             if (sender is CheckBox checkBox && checkBox.DataContext is Alarm alarm)
             {
                 alarm.IsEnabled = true;
-                SaveAlarms();
+                if (Application.Current is App app && app.AlarmService != null)
+                {
+                    app.AlarmService.SetAlarmEnabled(alarm.Id, true);
+                }
             }
         }
 
         private void AlarmToggle_Unchecked(object sender, RoutedEventArgs e)
         {
-            if (_isInitialLoad || _isLoading)
+            if (IsApplyingAlarmSnapshot || _isSaving)
                 return;
                 
             if (sender is CheckBox checkBox && checkBox.DataContext is Alarm alarm)
             {
                 alarm.IsEnabled = false;
+                if (Application.Current is App app && app.AlarmService != null)
+                {
+                    app.AlarmService.SetAlarmEnabled(alarm.Id, false);
+                }
+            }
+        }
+
+        private void AlarmToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsApplyingAlarmSnapshot || _isSaving)
+                return;
+
+            if (sender is not CheckBox checkBox || checkBox.DataContext is not Alarm alarm)
+                return;
+
+            var isEnabled = checkBox.IsChecked == true;
+            alarm.IsEnabled = isEnabled;
+
+            if (Application.Current is App app && app.AlarmService != null)
+            {
+                app.AlarmService.SetAlarmEnabled(alarm.Id, isEnabled);
+            }
+            else
+            {
+                SaveAlarms();
+            }
+        }
+
+        private void AutoDdayToggle_Checked(object sender, RoutedEventArgs e)
+        {
+            if (IsApplyingAlarmSnapshot || _isSaving)
+                return;
+
+            if (sender is CheckBox checkBox && checkBox.DataContext is Alarm alarm)
+            {
+                alarm.AutoRegisterAsDday = true;
+                if (Application.Current is App app && app.AlarmService != null)
+                {
+                    app.AlarmService.SetAutoRegisterAsDday(alarm.Id, true);
+                    app.AlarmService.CreateNextDdayForAlarm(alarm.Id);
+                }
+            }
+        }
+
+        private void AutoDdayToggle_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (IsApplyingAlarmSnapshot || _isSaving)
+                return;
+
+            if (sender is CheckBox checkBox && checkBox.DataContext is Alarm alarm)
+            {
+                alarm.AutoRegisterAsDday = false;
+                if (Application.Current is App app && app.AlarmService != null)
+                {
+                    app.AlarmService.SetAutoRegisterAsDday(alarm.Id, false);
+                }
+            }
+        }
+
+        private void AutoDdayToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsApplyingAlarmSnapshot || _isSaving)
+                return;
+
+            if (sender is not CheckBox checkBox || checkBox.DataContext is not Alarm alarm)
+                return;
+
+            var autoRegister = checkBox.IsChecked == true;
+            alarm.AutoRegisterAsDday = autoRegister;
+
+            if (Application.Current is App app && app.AlarmService != null)
+            {
+                app.AlarmService.SetAutoRegisterAsDday(alarm.Id, autoRegister);
+                if (autoRegister)
+                {
+                    app.AlarmService.CreateNextDdayForAlarm(alarm.Id);
+                }
+            }
+            else
+            {
                 SaveAlarms();
             }
         }
@@ -938,10 +1051,16 @@ namespace DongNoti
         {
             try
             {
+                if (IsApplyingAlarmSnapshot || _isSaving)
+                    return;
+
                 if (sender is CheckBox checkBox && checkBox.DataContext is Alarm dday)
                 {
                     dday.IsEnabled = true;
-                    SaveAlarms();
+                    if (Application.Current is App app && app.AlarmService != null)
+                    {
+                        app.AlarmService.SetAlarmEnabled(dday.Id, true);
+                    }
                     LogService.LogInfo($"Dday 활성화: '{dday.Title}'");
                 }
             }
@@ -955,16 +1074,52 @@ namespace DongNoti
         {
             try
             {
+                if (IsApplyingAlarmSnapshot || _isSaving)
+                    return;
+
                 if (sender is CheckBox checkBox && checkBox.DataContext is Alarm dday)
                 {
                     dday.IsEnabled = false;
-                    SaveAlarms();
+                    if (Application.Current is App app && app.AlarmService != null)
+                    {
+                        app.AlarmService.SetAlarmEnabled(dday.Id, false);
+                    }
                     LogService.LogInfo($"Dday 비활성화: '{dday.Title}'");
                 }
             }
             catch (Exception ex)
             {
                 LogService.LogError("Dday 비활성화 중 오류", ex);
+            }
+        }
+
+        private void DdayToggle_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (IsApplyingAlarmSnapshot || _isSaving)
+                    return;
+
+                if (sender is not CheckBox checkBox || checkBox.DataContext is not Alarm dday)
+                    return;
+
+                var isEnabled = checkBox.IsChecked == true;
+                dday.IsEnabled = isEnabled;
+
+                if (Application.Current is App app && app.AlarmService != null)
+                {
+                    app.AlarmService.SetAlarmEnabled(dday.Id, isEnabled);
+                }
+                else
+                {
+                    SaveAlarms();
+                }
+
+                LogService.LogInfo($"Dday {(isEnabled ? "활성화" : "비활성화")}: '{dday.Title}'");
+            }
+            catch (Exception ex)
+            {
+                LogService.LogError("Dday 활성 상태 변경 중 오류", ex);
             }
         }
 
@@ -1033,30 +1188,13 @@ namespace DongNoti
                                 _alarms = new List<Alarm>();
                             }
 
-                            if (!_isSaving)
+                            if (!_isSaving && !IsApplyingAlarmSnapshot)
                             {
-                                _isSaving = true;
-                                StorageService.SaveAlarms(_alarms);
+                                SaveAlarms();
                                 UpdateStatus();
-                                
-                                Dispatcher.BeginInvoke(new Action(() =>
-                                {
-                                    if (Application.Current is App app)
-                                    {
-                                        app.RefreshAlarms(refreshMainWindow: false);
-                                    }
-                                }), System.Windows.Threading.DispatcherPriority.Background);
-                                
                                 _isSaving = false;
                                 LogService.LogInfo($"DataGrid 편집 후 알람 저장 완료");
                                 
-                                var currentSelection = AlarmsDataGrid.SelectedItem;
-                                AlarmsDataGrid.ItemsSource = null;
-                                AlarmsDataGrid.ItemsSource = _alarms;
-                                if (currentSelection != null)
-                                {
-                                    AlarmsDataGrid.SelectedItem = currentSelection;
-                                }
                             }
                         }
                         catch (Exception ex)

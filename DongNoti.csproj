@@ -17,12 +17,16 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     
     <!-- App Information -->
-    <Version>1.0.5.3</Version>
+    <Version>1.0.5.6</Version>
     <Authors>DongNoti</Authors>
     <Company>DongNoti</Company>
     <Product>DongNoti</Product>
     <Description>Windows 11 Alarm Application</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DongNoti.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
